@@ -1,0 +1,59 @@
+#ifndef __MYE2PROM_H_
+#define __MYE2PROM_H_
+
+#include "stm32f1xx_hal.h"
+/**
+
+8KB  = 64bit
+
+there are 32 sections
+1 section has 8 pages
+1 page has 32 bytes
+
+0 section - 0 page will store MBR info
+
+0 section  - 1 page will store system information , <=32 bytes
+
+**/
+
+#define SECTION_MBRINFO     0
+#define SECTION_SYSINFO   0
+
+#define PAGE_MBRINFO          0
+#define PAGE_SYSINFO        1
+
+
+#define E2PROM_ADDR   0xA0
+#define E2PROM_MAXPKT   32
+#define E2PROM_WRITE_WAIT   10  //ms
+#define E2PROM_READ_WAIT     10
+#define E2PROM_TIMEOUT          5*E2PROM_WRITE_WAIT
+#define E2PROM_SECTION_SIZE   32
+
+
+typedef struct MBRInfo{
+    uint8_t mark1; // Whether it's a valid info, 'Ruff' is correct, 0xFF is not;
+    uint8_t mark2;
+    uint8_t mark3;
+    uint8_t mark4;
+} MBRInfo_t;
+
+typedef struct SysInfo{
+  uint8_t addrH;
+  uint8_t addrL;
+    uint8_t sped;
+  uint8_t chan;
+  uint8_t option;s
+  uint8_t role;  // 1 master, 0 slave
+  uint8_t model[10];
+  uint8_t version[3];
+
+  
+} SysInfo_t;
+
+#define MBRINFO_SIZE                    sizeof(MBRInfo_t)
+#define SYSINFO_SIZE                  sizeof(SysInfo_t)
+
+void E2PROM_Init(void);
+
+#endif

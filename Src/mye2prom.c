@@ -1,0 +1,145 @@
+#include "mye2prom.h"
+#include <string.h>
+
+extern I2C_HandleTypeDef hi2c1;
+
+uint8_t   mbrInfo[MBRINFO_SIZE];
+uint8_t   sysInfo[SYSINFO_SIZE];
+
+
+void E2PROM_Read(uint8_t section, uint8_t page, uint8_t * data, uint8_t len)
+{
+    HAL_StatusTypeDef fb;
+    uint16_t memaddr;
+
+    memaddr = 32*(8*section + page);
+
+    do
+    {
+        printf("E2PROM read\n");
+        fb = HAL_I2C_Mem_Read(&hi2c1, E2PROM_ADDR, memaddr, I2C_MEMADD_SIZE_16BIT, data,   len, E2PROM_READ_WAIT);
+
+    }
+    while(fb != HAL_OK);
+
+}
+void E2PROM_Write(uint8_t section, uint8_t page, uint8_t * data, uint8_t len)
+{
+    HAL_StatusTypeDef fb;
+    uint16_t memaddr;
+
+    memaddr = 32*(8*section + page);
+
+    do
+    {
+        printf("E2PROM write\n");
+        fb = HAL_I2C_Mem_Write(&hi2c1, E2PROM_ADDR, memaddr, I2C_MEMADD_SIZE_16BIT, data, len, E2PROM_WRITE_WAIT);
+
+    }
+    while(fb != HAL_OK);
+
+}
+
+void Get_MBR(uint8_t * data, uint8_t len)
+{
+    E2PROM_Read(SECTION_MBRINFO, PAGE_MBRINFO,  data, len);
+}
+void Set_MBR(uint8_t * data, uint8_t len)
+{
+    E2PROM_Write(SECTION_MBRINFO, PAGE_MBRINFO,  data, len);
+}
+void Get_SysInfo(uint8_t * data, uint8_t len)
+{
+    E2PROM_Read(SECTION_SYSINFO, PAGE_SYSINFO,  data, len);
+}
+void Set_SysInfo(uint8_t * data, uint8_t len)
+{
+    E2PROM_Write(SECTION_SYSINFO, PAGE_SYSINFO,  data, len);
+}
+void E2PROM_Init(void)
+{
+
+    MBRInfo_t *pMBRInfo;
+    SysInfo_t  *pSysInfo;
+    uint16_t i;
+
+    printf("E2PROM init");
+
+    // check mark
+    Get_MBR(mbrInfo, MBRINFO_SIZE);
+    Get_SysInfo(sysInfo, SYSINFO_SIZE);
+
+    pMBRInfo = (MBRInfo_t *)mbrInfo;
+    pSysInfo = (SysInfo_t *)sysInfo;
+
+    // OK  , read out the data
+    if(pMBRInfo->mark1 == 'r'
+       &&pMBRInfo->mark2 == 'u'
+       &&pMBRInfo->mark3 == 'f'
+       &&pMBRInfo->mark4 == 'f')
+    {
+        // already configured
+        printf("E2PROM already inited");
+    }
+    else
+    {
+        printf("E2PROM not initiated, set to default value\n");
+        pMBRInfo->mark1 = 'r';
+        pMBRInfo->mark2 = 'u';
+        pMBRInfo->mark3 = 'f';
+        pMBRInfo->mark4 = 'f';
+
+        // Default setting,create the default data value
+        pSysInfo->addrH = 0x00;
+        pSysInfo->addrL = 0x01;
+        pSysInfo->chan = 0x00; // channel 1  ,  0 ~ 1F
+        pSysInfo->sped = SPED_SERIAL_8N1 \
+                         | SPED_SERIAL_BAUDRATE_9600 \
+                         | SPED_BPS_2K4;
+        pSysInfo->option = OPTION_MODE_NON_TRANSPARENT\
+                           |OPTION_IO_MODE_ZERO\
+                           | OPTION_WAKEUP_250\
+                           | OPTION_FEC_ON \
+                           | OPTION_PWR_20;
+
+        pSysInfo->role = ROLE_SLAVE;  // 1 is master
+        
+        sprintf(pSysInfo->model, "%s", MY_MODEL);
+        sprintf(pSysInfo->version, "%s", MY_VERSION);
+
+        Set_MBR(mbrInfo, MBRINFO_SIZE);
+        Set_SysInfo(sysInfo, SYSINFO_SIZE);
+
+        Get_MBR(mbrInfo, MBRINFO_SIZE);
+        Get_SysInfo(sysInfo, SYSINFO_SIZE);
+
+        pMBRInfo = (MBRInfo_t *)mbrInfo;
+        pSysInfo = (SysInfo_t *)sysInfo;
+
+    }
+
+    // Print out the parameters
+    printf("MBR is:\n");
+    for(i=0; i< MBRINFO_SIZE; i++)
+    {
+        printf("%c\n",mbrInfo[i]);
+    }
+    printf("Address:0x%x%x\n", pSysInfo->addrH, pSysInfo->addrL);
+    printf("SPED:%x\n", pSysInfo->sped);
+    printf("channel: %d\n", pSysInfo->chan);
+    printf("option: %x\n", pSysInfo->option);
+    printf("model:%s\n", pSysInfo->model);
+    printf("version:%s\n", pSysInfo->version);
+    printf("role:%d\n", pSysInfo->role);
+    
+}
+
+SysInfo_t* getSysInfoPointer(){
+    SysInfo_t  *pSysInfo;
+    pSysInfo = (SysInfo_t *)sysInfo;
+
+    printf("role:%d\n", pSysInfo->role);
+    return pSysInfo;
+}
+
+
