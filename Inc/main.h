@@ -49,7 +49,7 @@
 #ifndef __MAIN_H
 #define __MAIN_H
   /* Includes ------------------------------------------------------------------*/
-
+#include "stm32f1xx_hal.h"
 /* USER CODE BEGIN Includes */
 
 #define MY_VERSION "1.01"

@@ -1,0 +1,80 @@
+#include "parser.h"
+#include <stdio.h>
+#include <string.h>
+#include "main.h"
+
+void parseConfigSet(char* str, uint8_t len){
+    char strObj[5];
+    char strContent[16];
+    uint8_t i, j=0;
+
+    for(i=0; i< 4; i++){
+        strObj[i] = str[i];
+    }
+    strObj[i] = '\0';
+
+    for(i; i< len; i++){
+        strContent[j++] = str[i];
+    }
+    strContent[j] = '\0';
+
+    if(strcmp(strObj, "RSET") == 0){
+
+
+    }else if(strcmp(strObj, "ADDR") == 0){
+
+
+    }else if(strcmp(strObj, "CHAN") == 0){
+        
+
+    }
+
+}
+void parseConfigRead(char* str, uint8_t len){
+    char strObj[5];
+    uint8_t i;
+
+    for(i=0; i< 4; i++){
+        strObj[i] = str[i];
+    }
+    strObj[i] = '\0';
+
+        if(strcmp(strObj, "VER*") == 0){
+
+
+    }else if(strcmp(strObj, "MODL") == 0){
+
+
+    }else if(strcmp(strObj, "SYS*") == 0){
+        
+
+    }
+
+}
+void parseConfig(char* str, uint8_t len){
+
+    char strType[5];
+    char strObj[32];
+    uint8_t i, j=0;
+
+    for(i=0; i<4; i++){
+        strType[i] = str[i];
+    }
+    strType[i] = '\0';
+    
+    for(i;i<len; i++){
+        strObj[j++] = str[i]
+    }
+    strObj[j] = '\0';
+    
+    if(strcmp(strType, "SET*")==0){
+        parseConfigSet(strObj, strlen(strObj));
+    }else if(strcmp(strType, "READ")==0){
+        parseConfigRead(strObj, strlen(strObj));
+    }else{
+        printf("Unrecognized config cmd:%s\r\n", str);
+    }
+}
+
+
+

@@ -142,4 +142,7 @@ SysInfo_t* getSysInfoPointer(){
     return pSysInfo;
 }
 
+void saveSysInfoPointer(){
+    Set_SysInfo(sysInfo, SYSINFO_SIZE);
+}
 

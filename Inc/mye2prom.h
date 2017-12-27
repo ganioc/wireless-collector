@@ -62,5 +62,5 @@ typedef struct SysInfo
 void E2PROM_Init(void);
 SysInfo_t* getSysInfoPointer();
 
-
+void saveSysInfoPointer();
 #endif

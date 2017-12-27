@@ -199,27 +199,7 @@ static void switchToWorking()
         printf("unrecognized role\r\n");
     }
 }
-void parseConfig(char* str, uint8_t len){
 
-    char strType[5];
-    char strObj[5];
-    char strContent[20];
-    uint8_t i;
-
-    for(i=0; i<4; i++){
-        strType[i] = str[i];
-    }
-    strType[i] = '\0';
-    
-    
-    if(strcmp(strType, "SET*")==0){
-
-    }else if(strcmp(strType, "READ")==0){
-
-    }else{
-        printf("Unrecognized config cmd:%s\r\n", str);
-    }
-}
 static void TaskLoop(void const * argument)
 {
 
@@ -257,13 +237,8 @@ static void TaskLoop(void const * argument)
             }
             else if(ret.status ==  osEventSignal && ret.value.v == 2)
             {
-
-
+                switchToWorking();
             }
-
-            // switch to the working state
-
-            // otherwise, stay
         }
         else if(mRs485Thread.state == STATE_WORKING_MASTER)
         {
