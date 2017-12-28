@@ -38,10 +38,33 @@ void parseConfigSet(char* str, uint8_t len)
     else if(strcmp(strObj, "ADDR") == 0)
     {
         printf("address config\r\n");
+        
+        if(strlen(strContent)!= 2){
+            printf("wrong format of addr: %d\r\n", strlen(strContent));
+        }else{
+            // save addr
+            pSysInfo = getSysInfoPointer();
+            pSysInfo->addrH= strContent[0];
+            pSysInfo->addrL = strContent[1];
+            printf("Set addr to:0x%x%x\r\n", 
+                        pSysInfo->addrH,
+                        pSysInfo->addrL);
+        }
+        
     }
     else if(strcmp(strObj, "CHAN") == 0)
     {
         printf("channel config\r\n");
+        if(strlen(strContent)!= 1){
+            printf("wrong format of addr: %d\r\n", strlen(strContent));
+        }else{
+            // save addr
+            pSysInfo = getSysInfoPointer();
+            pSysInfo->chan= strContent[0];
+
+            printf("Set channel to:0x%x\r\n", 
+                        pSysInfo->chan);
+        }
 
     }
     else if(strcmp(strObj, "SAVE") == 0)

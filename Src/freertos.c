@@ -103,6 +103,7 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   Rs485ThreadInit();
+  LoraThreadInit();
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
