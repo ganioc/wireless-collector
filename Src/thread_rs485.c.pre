@@ -4,16 +4,18 @@
 #include "usart.h"
 #include "string.h"
 #include "mye2prom.h"
+#include "parser.h"
 
 TaskThread_t mRs485Thread;
+extern TaskThread_t mLoraThread;
 
 uint32_t timeMark;
 
 void (*handlerByteRs485)(uint8_t c);
 
-static uint8_t RX_BUF[BUFFER_MAX_SIZE_RS485];
+uint8_t RX_BUF[BUFFER_MAX_SIZE_RS485];
 static uint8_t THREAD_RX_BUF[BUFFER_MAX_SIZE_RS485];
-static uint8_t indexRx = 0;
+uint8_t indexRx = 0;
 static uint8_t indexThreadRx = 0;
 
 static uint8_t mRxState= RX_STATE_ZERO;
@@ -22,12 +24,8 @@ static uint8_t mCounterWaiting = 0;
 
 
 
-extern uint8_t  * mbrInfo;
-extern uint8_t  * sysInfo;
 
-
-
-static void handlerByteWaiting(uint8_t c)
+static void handleByteWaiting(uint8_t c)
 {
     // ruff\r\n will make it into the next stage
     switch(mRxState)
@@ -80,27 +78,32 @@ static void handlerByteWaiting(uint8_t c)
     }
 
 }
-static void handlerByteConfig(uint8_t c)
+static void handleByteConfig(uint8_t c)
 {
     uint8_t i;
-    
+
     switch(mRxState)
     {
         case CONFIG_STATE_ZERO:
-            if(c == '\r' || c == '\n'){
+            if(c == '\r' || c == '\n')
+            {
                 indexRx = 0;
-            }else{
+            }
+            else
+            {
                 RX_BUF[indexRx++] = c;
                 mRxState = CONFIG_STATE_BODY;
             }
             break;
 
         case CONFIG_STATE_LAST_0:
-            if(c == '\n'){
+            if(c == '\n')
+            {
 
                 // copy buffer to thread buffer
                 indexThreadRx = indexRx;
-                for(i = 0; i< indexThreadRx; i++){
+                for(i = 0; i< indexThreadRx; i++)
+                {
                     THREAD_RX_BUF[i] = RX_BUF[i];
                 }
                 THREAD_RX_BUF[i] = '\0';
@@ -109,141 +112,153 @@ static void handlerByteConfig(uint8_t c)
             }
             mRxState = CONFIG_STATE_ZERO;
             indexRx = 0;
-            
+
             break;
         case CONFIG_STATE_LAST_1:
             break;
         case CONFIG_STATE_BODY:
-            if(c == '\r'){
+            if(c == '\r')
+            {
                 mRxState = CONFIG_STATE_LAST_0;
-            }else if(c == '\n'){
+            }
+            else if(c == '\n')
+            {
                 indexRx = 0;
                 mRxState = CONFIG_STATE_ZERO;
-            }else{
+            }
+            else
+            {
                 RX_BUF[indexRx++] = c;
             }
-            
+
             break;
         default:
             break;
     }
 
 }
-static void handlerByteWorkingForMaster(uint8_t c)
+void ResetRS485RxBuffer()
 {
-    RX_BUF[indexRx++] = c;
-
-    
     indexRx = 0;
 }
-
-static void handlerByteWorkingForSlave(uint8_t c)
+void AppendZeroRxBuffer()
+{
+    RX_BUF[indexRx] = '\0';
+}
+/**
+* 收到发来的数据，就把数据发给lorathread线程
+**/
+static void handleByteWorkingForMaster(uint8_t c)
 {
     RX_BUF[indexRx++] = c;
+    osSignalSet(mLoraThread.idThread, 0x01);
+}
 
-    indexRx = 0;
+static void handleByteWorkingForSlave(uint8_t c)
+{
+//    RX_BUF[0] = c;
+//    osSignalSet(mLoraThread.idThread, 0x01);
+}
+
+static void handleByte(uint8_t c)
+{
+    if(mRs485Thread.state == STATE_WAITING)
+    {
+        handleByteWaiting(c);
+    }
+    else if(mRs485Thread.state == STATE_CONFIG)
+    {
+        handleByteConfig(c);
+    }
+    else if(mRs485Thread.state == STATE_WORKING_MASTER)
+    {
+        handleByteWorkingForMaster(c);
+    }
+    else if(mRs485Thread.state == STATE_WORKING_SLAVE)
+    {
+        handleByteWorkingForSlave(c);
+    }
 
 }
 static void switchToConfig()
 {
-    printf("clear signal on rs485thread\r\n");
-    osSignalClear(mRs485Thread.idThread, 0x03);
-    
+
     indexRx=0;
     mRs485Thread.state = STATE_CONFIG;
-    handlerByteRs485 = handlerByteConfig;
     mRxState = CONFIG_STATE_ZERO;
 
 }
 static void switchToWorking()
 {
-    SysInfo_t *pSysInfo = (SysInfo_t *)sysInfo;
-
-    printf("clear signal on rs485thread\r\n");
-    osSignalClear(mRs485Thread.idThread, 0x03);
-
-    mRs485Thread.state = STATE_WORKING;
+    SysInfo_t *pSysInfo ;
 
     indexRx=0;
 
     printf("Go to working state ==>\r\n");
 
+    pSysInfo = getSysInfoPointer();
+    //printf("role:%d\n", pSysInfo->role);
 
     if(pSysInfo->role == ROLE_MASTER)
     {
-        handlerByteRs485 = handlerByteWorkingForMaster;
+        mRs485Thread.state = STATE_WORKING_MASTER;
+        mRxState = MASTER_STATE_ZERO;
+        printf("Role master\r\n");
 
+        // trigure loraThread
+        osSignalSet(mLoraThread.idThread, 0x01);
     }
     else if(pSysInfo->role == ROLE_SLAVE)
     {
-        handlerByteRs485 = handlerByteWorkingForSlave;
+        mRs485Thread.state = STATE_WORKING_SLAVE;
+        mRxState = SLAVE_STATE_ZERO;
+        printf("Role slave\r\n");
 
-    }else{
+        // trigure lorathread
+        osSignalSet(mLoraThread.idThread, 0x01);
+    }
+    else
+    {
         printf("unrecognized role\r\n");
     }
-
 }
-
-static void TaskLoop(void const * argument)
+static  void TaskHandlerConfig(osEvent ret)
 {
-
-    osEvent ret;
-
-    printf("mRs485Thread taskloop started\r\n");
-
-    mRs485Thread.state = STATE_WAITING;
-    handlerByteRs485 = handlerByteWaiting;
-
-    printf("mRS485Thread in wating state\r\n");
-
-    mCounterWaiting = 0;
-
-    // Triger uart3 receive
-    UART3_Receive();
-
-
-    while(1)
+    if(ret.status ==  osEventSignal && ret.value.v == 1)
     {
-                    // wait for comming commands
-            // waiting for the comming characters
-            ret = osSignalWait(0x3, 1000);
+        printf("%d:%s\r\n", strlen((char*)THREAD_RX_BUF),THREAD_RX_BUF);
 
-        if(mRs485Thread.state == STATE_CONFIG)
-        {
+        parseConfig((char*)THREAD_RX_BUF, strlen((char*)THREAD_RX_BUF));
 
-
-            if(ret.status ==  osEventSignal && ret.value.v == 1)
-            {
-                //printf("%d\r\n", ret.value.v);
-                
-                printf("%d:%s\r\n", strlen((char*)THREAD_RX_BUF),THREAD_RX_BUF);
-
-            }else if(ret.status ==  osEventSignal && ret.value.v == 2){
-
-
-            }
-
-            // switch to the working state
-
-            // otherwise, stay
-
-
-        }
-        else if(mRs485Thread.state == STATE_WORKING)
-        {
-            // waiting for the comming characters
-            // ret = osSignalWait(0x03, 1000);
+    }
+    else if(ret.status ==  osEventSignal && ret.value.v == 2)
+    {
+        switchToWorking();
+    }
+}
+static  void TaskHandlerWorkingMaster(osEvent ret)
+{
             if(ret.status ==  osEventSignal)
             {
                 printf("%c\r\n", RX_BUF[0]);
 
             }
+}
+static  void TaskHandlerWorkingSlave(osEvent ret)
+{
 
-        }
-        else if(mRs485Thread.state == STATE_WAITING)
-        {
-            // waiting for the comming characters
-            //ret = osSignalWait(0x01, 1000);
+            if(ret.status ==  osEventSignal)
+            {
+                printf("%c\r\n", RX_BUF[0]);
+
+            }
+            else if(ret.status == osEventTimeout)
+            {
+                printf("timeout %d\r\n",0);
+            }
+}
+static  void TaskHandlerWaiting(osEvent ret)
+{
 
             if(ret.status ==  osEventSignal)
             {
@@ -266,9 +281,52 @@ static void TaskLoop(void const * argument)
             {
                 switchToWorking();
             }
-        }
+}
+static void TaskLoop(void const * argument)
+{
 
-        // osDelay(100);
+    osEvent ret;
+
+    printf("mRs485Thread taskloop started\r\n");
+
+    mRs485Thread.state = STATE_WAITING;
+    handlerByteRs485 = handleByte;
+
+    printf("mRS485Thread in wating state\r\n");
+
+    mCounterWaiting = 0;
+
+    // Triger uart3 receive
+    UART3_Receive();
+
+
+    while(1)
+    {
+        // wait for comming commands
+        // waiting for the comming characters
+        ret = osSignalWait(0x3, 100);
+
+        if(mRs485Thread.state == STATE_CONFIG)
+        {
+            TaskHandlerConfig(ret);
+        }
+        else if(mRs485Thread.state == STATE_WORKING_MASTER)
+        {
+TaskHandlerWorkingMaster(ret);
+
+
+        }
+        else if(mRs485Thread.state == STATE_WORKING_SLAVE)
+        {
+           
+TaskHandlerWorkingSlave(ret);
+
+        }
+        else if(mRs485Thread.state == STATE_WAITING)
+        {
+
+TaskHandlerWaiting(ret);
+        }
 
     }
 }

@@ -4,16 +4,18 @@
 #include "usart.h"
 #include "string.h"
 #include "mye2prom.h"
+#include "parser.h"
 
 TaskThread_t mRs485Thread;
+extern TaskThread_t mLoraThread;
 
 uint32_t timeMark;
 
 void (*handlerByteRs485)(uint8_t c);
 
-static uint8_t RX_BUF[BUFFER_MAX_SIZE_RS485];
+uint8_t RX_BUF[BUFFER_MAX_SIZE_RS485];
 static uint8_t THREAD_RX_BUF[BUFFER_MAX_SIZE_RS485];
-static uint8_t indexRx = 0;
+uint8_t indexRx = 0;
 static uint8_t indexThreadRx = 0;
 
 static uint8_t mRxState= RX_STATE_ZERO;
@@ -135,30 +137,45 @@ static void handleByteConfig(uint8_t c)
     }
 
 }
+void ResetRS485RxBuffer()
+{
+    indexRx = 0;
+}
+void AppendZeroRxBuffer()
+{
+    RX_BUF[indexRx] = '\0';
+}
+/**
+* 收到发来的数据，就把数据发给lorathread线程
+**/
 static void handleByteWorkingForMaster(uint8_t c)
 {
     RX_BUF[indexRx++] = c;
-
-    osSignalSet(mRs485Thread.idThread, 0x01);
-    indexRx = 0;
+    osSignalSet(mLoraThread.idThread, 0x01);
 }
 
 static void handleByteWorkingForSlave(uint8_t c)
 {
-    RX_BUF[indexRx++] = c;
-    osSignalSet(mRs485Thread.idThread, 0x01);
-    indexRx = 0;
-
+//    RX_BUF[0] = c;
+//    osSignalSet(mLoraThread.idThread, 0x01);
 }
 
-static void handleByte(uint8_t c){
-    if(mRs485Thread.state == STATE_WAITING){
+static void handleByte(uint8_t c)
+{
+    if(mRs485Thread.state == STATE_WAITING)
+    {
         handleByteWaiting(c);
-    }else if(mRs485Thread.state == STATE_CONFIG){
+    }
+    else if(mRs485Thread.state == STATE_CONFIG)
+    {
         handleByteConfig(c);
-    }else if(mRs485Thread.state == STATE_WORKING_MASTER){
+    }
+    else if(mRs485Thread.state == STATE_WORKING_MASTER)
+    {
         handleByteWorkingForMaster(c);
-    }else if(mRs485Thread.state == STATE_WORKING_SLAVE){
+    }
+    else if(mRs485Thread.state == STATE_WORKING_SLAVE)
+    {
         handleByteWorkingForSlave(c);
     }
 
@@ -178,7 +195,7 @@ static void switchToWorking()
     indexRx=0;
 
     printf("Go to working state ==>\r\n");
-    
+
     pSysInfo = getSysInfoPointer();
     //printf("role:%d\n", pSysInfo->role);
 
@@ -187,19 +204,84 @@ static void switchToWorking()
         mRs485Thread.state = STATE_WORKING_MASTER;
         mRxState = MASTER_STATE_ZERO;
         printf("Role master\r\n");
+
+        // trigure loraThread
+        osSignalSet(mLoraThread.idThread, 0x01);
     }
     else if(pSysInfo->role == ROLE_SLAVE)
     {
-       mRs485Thread.state = STATE_WORKING_SLAVE;
-       mRxState = SLAVE_STATE_ZERO;
-       printf("Role slave\r\n");
+        mRs485Thread.state = STATE_WORKING_SLAVE;
+        mRxState = SLAVE_STATE_ZERO;
+        printf("Role slave\r\n");
+
+        // trigure lorathread
+        osSignalSet(mLoraThread.idThread, 0x01);
     }
     else
     {
         printf("unrecognized role\r\n");
     }
 }
+static  void TaskHandlerConfig(osEvent ret)
+{
+    if(ret.status ==  osEventSignal && ret.value.v == 1)
+    {
+        printf("%d:%s\r\n", strlen((char*)THREAD_RX_BUF),THREAD_RX_BUF);
 
+        parseConfig((char*)THREAD_RX_BUF, strlen((char*)THREAD_RX_BUF));
+
+    }
+    else if(ret.status ==  osEventSignal && ret.value.v == 2)
+    {
+        switchToWorking();
+    }
+}
+static  void TaskHandlerWorkingMaster(osEvent ret)
+{
+    if(ret.status ==  osEventSignal)
+    {
+        ;
+
+    }
+}
+static  void TaskHandlerWorkingSlave(osEvent ret)
+{
+
+    if(ret.status ==  osEventSignal)
+    {
+        ;
+
+    }
+    else if(ret.status == osEventTimeout)
+    {
+        ;
+    }
+}
+static  void TaskHandlerWaiting(osEvent ret)
+{
+
+    if(ret.status ==  osEventSignal)
+    {
+        printf("Should go to Config state\r\n");
+        printf("%s is a match\r\n", RX_BUF);
+
+        UART3_Transmit("OK\r\n", 4);
+
+        // otherwise it will switch to the config state
+        switchToConfig();
+
+    }
+    else if(ret.status == osEventTimeout)
+    {
+        printf("timeout %d\r\n", mCounterWaiting++);
+    }
+
+    // after 10 seconds, it will switch to the Working state
+    if(mCounterWaiting == 10)
+    {
+        switchToWorking();
+    }
+}
 static void TaskLoop(void const * argument)
 {
 
@@ -220,82 +302,27 @@ static void TaskLoop(void const * argument)
 
     while(1)
     {
-        // wait for comming commands
-        // waiting for the comming characters
-        ret = osSignalWait(0x3, 1000);
-
         if(mRs485Thread.state == STATE_CONFIG)
         {
-            if(ret.status ==  osEventSignal && ret.value.v == 1)
-            {
-                //printf("%d\r\n", ret.value.v);
-
-                printf("%d:%s\r\n", strlen((char*)THREAD_RX_BUF),THREAD_RX_BUF);
-
-                parseConfig((char*)THREAD_RX_BUF, strlen((char*)THREAD_RX_BUF));
-
-            }
-            else if(ret.status ==  osEventSignal && ret.value.v == 2)
-            {
-                switchToWorking();
-            }
+            ret = osSignalWait(0x3, 1000);
+            TaskHandlerConfig(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_MASTER)
         {
-            
-            if(ret.status ==  osEventSignal)
-            {
-                printf("%c\r\n", RX_BUF[0]);
-
-            }
-
+            ret = osSignalWait(0x3, 100);
+            TaskHandlerWorkingMaster(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_SLAVE)
         {
-                    // waiting for the comming characters
-                    // ret = osSignalWait(0x03, 1000);
-            
-            if(ret.status ==  osEventSignal)
-            {
-                printf("%c\r\n", RX_BUF[0]);
-
-            }
-            else if(ret.status == osEventTimeout)
-            {
-                printf("timeout %d\r\n",0);
-            }
+            ret = osSignalWait(0x3, 100);
+            TaskHandlerWorkingSlave(ret);
 
         }
         else if(mRs485Thread.state == STATE_WAITING)
         {
-            // waiting for the comming characters
-            //ret = osSignalWait(0x01, 1000);
-
-            if(ret.status ==  osEventSignal)
-            {
-                printf("Should go to Config state\r\n");
-                printf("%s is a match\r\n", RX_BUF);
-
-                UART3_Transmit("OK\r\n", 4);
-
-                // otherwise it will switch to the config state
-                switchToConfig();
-
-            }
-            else if(ret.status == osEventTimeout)
-            {
-                printf("timeout %d\r\n", mCounterWaiting++);
-            }
-
-            // after 10 seconds, it will switch to the Working state
-            if(mCounterWaiting == 10)
-            {
-                switchToWorking();
-            }
+            ret = osSignalWait(0x3, 1000);
+            TaskHandlerWaiting(ret);
         }
-
-        // osDelay(100);
-
     }
 }
 

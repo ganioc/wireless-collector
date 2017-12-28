@@ -55,7 +55,7 @@
 /* USER CODE BEGIN 0 */
 uint8_t cUart2, cUart3;
 extern void (*handlerByteRs485)();
-
+extern void (*handlerByteLora)();
 
 /* USER CODE END 0 */
 
@@ -307,16 +307,12 @@ void UART_Receive(UART_HandleTypeDef * h, uint8_t* c){
 void  UART2_Receive()
 {
     UART_Receive(&huart2, (uint8_t *)&cUart2);
-
 }
 void  UART3_Receive()
 {
-
     UART_Receive(&huart3, (uint8_t *)&cUart3);
 }
 void UART_Transmit(UART_HandleTypeDef * h,uint8_t *str, uint16_t len){
-
-
     uint16_t i;
     uint8_t ch;
 
@@ -347,7 +343,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *UartHandle)
     }    // uart Lora
     else if(UartHandle->Instance==USART2)
     {
-        //UART2_Handle_Byte(cUart2);
+        handlerByteLora(cUart2);
         UART2_Receive();
     }
     // uart RS485

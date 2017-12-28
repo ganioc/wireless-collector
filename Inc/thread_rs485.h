@@ -28,6 +28,7 @@
 #define BUFFER_MAX_SIZE_RS485 255
 
 void Rs485ThreadInit();
-
+void ResetRS485RxBuffer();
+void AppendZeroRxBuffer();
 
 #endif

@@ -63,4 +63,6 @@ void E2PROM_Init(void);
 SysInfo_t* getSysInfoPointer();
 
 void saveSysInfoPointer();
+uint8_t getSysInfoChannel();
+uint8_t getSysInfoRole();
 #endif

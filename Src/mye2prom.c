@@ -138,11 +138,21 @@ SysInfo_t* getSysInfoPointer(){
     SysInfo_t  *pSysInfo;
     pSysInfo = (SysInfo_t *)sysInfo;
 
-    printf("role:%d\n", pSysInfo->role);
+    //printf("role:%d\n", pSysInfo->role);
     return pSysInfo;
 }
 
 void saveSysInfoPointer(){
     Set_SysInfo(sysInfo, SYSINFO_SIZE);
 }
+
+uint8_t getSysInfoChannel(){
+    SysInfo_t  *pSysInfo= (SysInfo_t *)sysInfo;
+    return pSysInfo->chan;
+}
+uint8_t getSysInfoRole(){
+    SysInfo_t  *pSysInfo= (SysInfo_t *)sysInfo;
+    return pSysInfo->role;
+}
+
 
