@@ -6,6 +6,7 @@
 #include "message.h"
 #include "mye2prom.h"
 #include "usart.h"
+#include <stdlib.h>
 
 extern TaskThread_t mRs485Thread;
 
@@ -16,6 +17,7 @@ void parseConfigSet(char* str, uint8_t len)
     char strContent[16];
     uint8_t i, j=0;
     SysInfo_t *pSysInfo ;
+    uint16_t addr16;
 
     for(i=0; i< 4; i++)
     {
@@ -23,7 +25,7 @@ void parseConfigSet(char* str, uint8_t len)
     }
     strObj[i] = '\0';
 
-    for(i; i< len; i++)
+    for(; i< len; i++)
     {
         strContent[j++] = str[i];
     }
@@ -39,13 +41,17 @@ void parseConfigSet(char* str, uint8_t len)
     {
         printf("address config\r\n");
         
-        if(strlen(strContent)!= 2){
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0 ){
             printf("wrong format of addr: %d\r\n", strlen(strContent));
         }else{
             // save addr
+            // strContent to number
+            addr16 = atoi((char*)strContent);
+            
             pSysInfo = getSysInfoPointer();
-            pSysInfo->addrH= strContent[0];
-            pSysInfo->addrL = strContent[1];
+            pSysInfo->addrH= 0xff&(addr16>>8);
+            pSysInfo->addrL = 0xff&addr16;
+            
             printf("Set addr to:0x%x%x\r\n", 
                         pSysInfo->addrH,
                         pSysInfo->addrL);
@@ -155,6 +161,7 @@ void parseConfig(char* str, uint8_t len)
     if(strcmp(strType, "SET*")==0)
     {
         parseConfigSet(strObj, strlen(strObj));
+        
     }
     else if(strcmp(strType, "READ")==0)
     {

@@ -27,8 +27,11 @@
 
 #define BUFFER_MAX_SIZE_RS485 255
 
+#define RS485_STATE_RX_WAITING 0x01
+#define RS485_STATE_RX_NONE       0x02
+
 void Rs485ThreadInit();
 void ResetRS485RxBuffer();
-void AppendZeroRxBuffer();
+
 
 #endif

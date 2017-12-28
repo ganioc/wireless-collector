@@ -22,7 +22,7 @@ static uint8_t mRxState= RX_STATE_ZERO;
 
 static uint8_t mCounterWaiting = 0;
 
-
+uint8_t mRs485State;
 
 
 static void handleByteWaiting(uint8_t c)
@@ -141,23 +141,20 @@ void ResetRS485RxBuffer()
 {
     indexRx = 0;
 }
-void AppendZeroRxBuffer()
-{
-    RX_BUF[indexRx] = '\0';
-}
+
 /**
 * 收到发来的数据，就把数据发给lorathread线程
 **/
 static void handleByteWorkingForMaster(uint8_t c)
 {
     RX_BUF[indexRx++] = c;
-    osSignalSet(mLoraThread.idThread, 0x01);
+    osSignalSet(mRs485Thread.idThread, 0x01);
 }
 
 static void handleByteWorkingForSlave(uint8_t c)
 {
-//    RX_BUF[0] = c;
-//    osSignalSet(mLoraThread.idThread, 0x01);
+    RX_BUF[indexRx++] = c;
+    osSignalSet(mRs485Thread.idThread, 0x01);
 }
 
 static void handleByte(uint8_t c)
@@ -238,49 +235,118 @@ static  void TaskHandlerConfig(osEvent ret)
 }
 static  void TaskHandlerWorkingMaster(osEvent ret)
 {
-            if(ret.status ==  osEventSignal)
-            {
-                printf("%c\r\n", RX_BUF[0]);
+uint8_t i;
+    uint16_t addr16;
 
-            }
+    if(ret.status ==  osEventSignal&& ret.value.v == 1&& mRs485State== RS485_STATE_RX_NONE)
+    {
+        mRs485State = RS485_STATE_RX_WAITING;
+
+    }
+    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_WAITING)
+    {
+        // frame ended
+        // send it out
+
+        printf("slave get data from RS485, len:%d\r\n",indexRx);
+
+        for(i=0; i< indexRx; i++)
+        {
+            printf("0x%02x\r\n", RX_BUF[i]);
+        }
+        addr16 = 0x00;
+        addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
+
+        SendOutLoraData(addr16, RX_BUF, indexRx);
+
+        ResetRS485RxBuffer();
+
+        mRs485State = RS485_STATE_RX_NONE;
+
+        // toggle led2
+        LED2_Toggle();
+        osDelay(20);
+        LED2_Toggle();
+        osDelay(20);
+        LED2_Toggle();
+        osDelay(20);
+        LED2_Toggle();
+
+    }
+    else if(ret.status == osEventTimeout && mLoraThread.state == LORA_STATE_RX_NONE)
+    {
+
+    }
 }
 static  void TaskHandlerWorkingSlave(osEvent ret)
 {
+    uint8_t i;
+    uint16_t addr16;
 
-            if(ret.status ==  osEventSignal)
-            {
-                printf("%c\r\n", RX_BUF[0]);
+    if(ret.status ==  osEventSignal&& ret.value.v == 1&& mRs485State== RS485_STATE_RX_NONE)
+    {
+        mRs485State = RS485_STATE_RX_WAITING;
 
-            }
-            else if(ret.status == osEventTimeout)
-            {
-                printf("timeout %d\r\n",0);
-            }
+    }
+    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_WAITING)
+    {
+        // frame ended
+        // send it out
+
+        printf("slave get data from RS485, len:%d\r\n",indexRx);
+
+        for(i=0; i< indexRx; i++)
+        {
+            printf("0x%02x\r\n", RX_BUF[i]);
+        }
+        addr16 = 0x00;
+        addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
+
+        SendOutLoraData(addr16, RX_BUF, indexRx);
+
+        ResetRS485RxBuffer();
+
+        mRs485State = RS485_STATE_RX_NONE;
+
+        // toggle led2
+        LED2_Toggle();
+        osDelay(20);
+        LED2_Toggle();
+        osDelay(20);
+        LED2_Toggle();
+        osDelay(20);
+        LED2_Toggle();
+
+    }
+    else if(ret.status == osEventTimeout && mLoraThread.state == LORA_STATE_RX_NONE)
+    {
+
+    }
 }
 static  void TaskHandlerWaiting(osEvent ret)
 {
 
-            if(ret.status ==  osEventSignal)
-            {
-                printf("Should go to Config state\r\n");
-                printf("%s is a match\r\n", RX_BUF);
+    if(ret.status ==  osEventSignal)
+    {
+        printf("Should go to Config state\r\n");
+        printf("%s is a match\r\n", RX_BUF);
 
-                UART3_Transmit("OK\r\n", 4);
+        UART3_Transmit("OK\r\n", 4);
 
-                // otherwise it will switch to the config state
-                switchToConfig();
+        // otherwise it will switch to the config state
+        switchToConfig();
 
-            }
-            else if(ret.status == osEventTimeout)
-            {
-                printf("timeout %d\r\n", mCounterWaiting++);
-            }
+    }
+    else if(ret.status == osEventTimeout)
+    {
+        printf("timeout %d\r\n", mCounterWaiting++);
+    }
 
-            // after 10 seconds, it will switch to the Working state
-            if(mCounterWaiting == 10)
-            {
-                switchToWorking();
-            }
+    // after 10 seconds, it will switch to the Working state
+    if(mCounterWaiting == 10)
+    {
+        switchToWorking();
+    }
 }
 static void TaskLoop(void const * argument)
 {
@@ -299,35 +365,32 @@ static void TaskLoop(void const * argument)
     // Triger uart3 receive
     UART3_Receive();
 
+    mRs485State = RS485_STATE_RX_NONE;
+
 
     while(1)
     {
-        // wait for comming commands
-        // waiting for the comming characters
-        ret = osSignalWait(0x3, 100);
-
         if(mRs485Thread.state == STATE_CONFIG)
         {
+            ret = osSignalWait(0x3, 1000);
             TaskHandlerConfig(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_MASTER)
         {
-TaskHandlerWorkingMaster(ret);
-
-
+            ret = osSignalWait(0x3, 100);
+            TaskHandlerWorkingMaster(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_SLAVE)
         {
-           
-TaskHandlerWorkingSlave(ret);
+            ret = osSignalWait(0x3, 10);
+            TaskHandlerWorkingSlave(ret);
 
         }
         else if(mRs485Thread.state == STATE_WAITING)
         {
-
-TaskHandlerWaiting(ret);
+            ret = osSignalWait(0x3, 1000);
+            TaskHandlerWaiting(ret);
         }
-
     }
 }
 

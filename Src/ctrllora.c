@@ -3,8 +3,10 @@
 #include "usart.h"
 #include "mye2prom.h"
 #include "frame.h"
+#include "cmsis_os.h"
 
 uint8_t buf[256];
+uint8_t headerBuf[64];
 
 void SetLoraSettingMode(){
 
@@ -45,12 +47,9 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
         uint8_t channel = pSysInfo->chan;
 
         uint8_t index = 0;
-        uint8_t i;
+        uint8_t i,j,nTemp, nTotal;
 
         printf("Send to %d at %d\r\n", addr, channel);
-        buf[index++] = 0xff&(addr>>8);
-        buf[index++] = 0xff &(addr);
-        buf[index++] = channel;
 
         buf[index++] = FRAME_HEAD;
         buf[index++] = pSysInfo->addrH;
@@ -66,6 +65,40 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
         buf[index++] = FRAME_TAIL_0;
         buf[index++] = FRAME_TAIL_1;
 
-        WriteLora( buf, index);
+        nTotal = index;
+
+        headerBuf[0] = 0xff&(addr>>8);
+        headerBuf[1] = 0xff &(addr);
+        headerBuf[2] = channel;
+
+
+        
+
+        for(i = 0; i< nTotal; i+= MAX_DATA_LENGTH){
+            
+            nTemp = (nTotal< i + MAX_DATA_LENGTH) ? nTotal: i+ MAX_DATA_LENGTH;
+            
+            for(j = 0; j< nTemp - i; j++){
+
+                headerBuf[3+j] = buf[i+j];
+            }
+            WriteLora( headerBuf, nTemp - i +3 );
+            
+            osDelay(10);
+        }
+        
+        //WriteLora(headerBuf, 3);
+        //WriteLora( buf, index);
+}
+
+void SendOutRs485Data(uint8_t * buf, uint16_t len){
+    uint16_t i;
+    printf("Sendout to RS485\r\n");
+    for(i=0; i< len; i++){
+        printf("%02d: %02x\r\n", i, buf[i]); 
+    }
+
+    UART3_Transmit(buf,  len);
 
 }
+

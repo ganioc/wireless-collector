@@ -54,6 +54,7 @@
 /* USER CODE BEGIN Includes */     
 #include "myled.h"
 #include "thread_rs485.h"
+#include "thread_lora.h"
 
 /* USER CODE END Includes */
 
@@ -119,7 +120,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-     osDelay(500);
+     osDelay(mDelayPeriod);
      LED1_Toggle();
      wwdg_life_counter = 0;
   }

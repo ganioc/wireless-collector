@@ -4,8 +4,9 @@
 #include "gpio.h"
 
 #define DELAY_NORMAL  500
-#define DELAY_QUICK   250
+#define DELAY_QUICK   60
 #define DELAY_SLOW    1000
+#define DELAY_FLASH   100
 
 #define LED1                GPIO_PIN_6
 #define LED2                GPIO_PIN_7
@@ -27,5 +28,9 @@ void LED_On(uint16_t pin);
 void LED_Off(uint16_t pin);
 void LED_Toggle(uint16_t pin);
 
+void SetLED1Quick();
+void SetLED1Slow();
+void SetLED1Normal();
+void  FlashLED2();
 
 #endif
