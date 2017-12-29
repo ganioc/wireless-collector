@@ -145,13 +145,7 @@ static void handleByteConfig(uint8_t c)
 /**
 * 收到发来的数据，就把数据发给lorathread线程
 **/
-static void handleByteWorkingForMaster(uint8_t c)
-{
-    RX_BUF[indexRx++] = c;
-    osSignalSet(mRs485Thread.idThread, 0x01);
-}
-
-static void handleByteWorkingForSlave(uint8_t c)
+static void handleByteWorking(uint8_t c)
 {
     RX_BUF[indexRx++] = c;
     osSignalSet(mRs485Thread.idThread, 0x01);
@@ -167,13 +161,10 @@ static void handleByte(uint8_t c)
     {
         handleByteConfig(c);
     }
-    else if(mRs485Thread.state == STATE_WORKING_MASTER)
+    else if(mRs485Thread.state == STATE_WORKING_MASTER
+                || mRs485Thread.state == STATE_WORKING_SLAVE)
     {
-        handleByteWorkingForMaster(c);
-    }
-    else if(mRs485Thread.state == STATE_WORKING_SLAVE)
-    {
-        handleByteWorkingForSlave(c);
+        handleByteWorking(c);
     }
 
 }
@@ -187,9 +178,62 @@ static void switchToConfig()
     SetLED1Slow();
 
 }
+
+static void SetRs485WorkingBaudrate(Rs485Info_t  *pRs485Inf){
+    uint32_t baudrate,  stopbits,  parity;
+    
+    if( pRs485Inf->baudRate == RS485_BAUDRATE_9600){
+        baudrate = 9600;
+        printf("Rs485 baudrate: 9600\r\n");
+    }else if(pRs485Inf->baudRate == RS485_BAUDRATE_19200){
+        baudrate = 19200;
+        printf("Rs485 baudrate: 19200\r\n");
+    }else{
+        baudrate = 9600;
+        printf("Rs485 baudrate: 9600\r\n");
+    }
+    if( pRs485Inf->stopBit== RS485_STOP_BITS_NONE){
+        stopbits = UART_STOPBITS_1;
+        printf("Rs485 stopbits: 1\r\n");
+    }else if(pRs485Inf->stopBit == RS485_STOP_BITS_1){
+        stopbits = UART_STOPBITS_1;
+        printf("Rs485 stopbits: 1\r\n");
+    }else if(pRs485Inf->stopBit == RS485_STOP_BITS_2){
+        stopbits = UART_STOPBITS_2;
+        printf("Rs485 stopbits: 2\r\n");
+    }else{
+        stopbits = UART_STOPBITS_1;
+        printf("Rs485 stopbits:1\r\n");
+    }
+
+    if( pRs485Inf->parity == RS485_PARITY_NONE){
+        parity = UART_PARITY_NONE;
+        printf("Rs485 parity: NONE\r\n");
+    }else if(pRs485Inf->parity == RS485_PARITY_EVEN){
+        parity = UART_PARITY_EVEN;
+        printf("Rs485 parity: EVEN\r\n");
+    }else if(pRs485Inf->parity == RS485_PARITY_ODD){
+        parity = UART_PARITY_ODD;
+        printf("Rs485 parity: ODD\r\n");
+    }else{
+        parity = UART_PARITY_NONE;
+        printf("Rs485 parity:NONE\r\n");
+    }
+    // I failed to modify the baud rate at runtime.
+    
+        //DeInitUart3();
+
+        //ReInitUart3( baudrate,  stopbits,  parity);
+
+        printf("Use new RS485 port config\r\n");
+
+
+    
+}
 static void switchToWorking()
 {
     SysInfo_t *pSysInfo ;
+    Rs485Info_t  *pRs485Info;
 
     SetLED1Normal();
 
@@ -198,7 +242,13 @@ static void switchToWorking()
     printf("Go to working state ==>\r\n");
 
     pSysInfo = getSysInfoPointer();
+    pRs485Info = getRs485InfoPointer();
     //printf("role:%d\n", pSysInfo->role);
+
+    
+    // set RS485 new baudrate
+
+    
 
     if(pSysInfo->role == ROLE_MASTER)
     {
@@ -211,6 +261,12 @@ static void switchToWorking()
     }
     else if(pSysInfo->role == ROLE_SLAVE)
     {
+
+        printf("Set RS485 baudrate\r\n");
+
+        SetRs485WorkingBaudrate(pRs485Info);
+
+    
         mRs485Thread.state = STATE_WORKING_SLAVE;
         mRxState = SLAVE_STATE_ZERO;
         printf("Role slave\r\n");
@@ -237,7 +293,8 @@ static  void TaskHandlerConfig(osEvent ret)
         switchToWorking();
     }
 }
-static void TaskHandlerWorking(osEvent ret){
+static void TaskHandlerWorking(osEvent ret)
+{
 
     uint8_t i;
     uint16_t addr16;
@@ -259,109 +316,23 @@ static void TaskHandlerWorking(osEvent ret){
             printf("0x%02x\r\n", RX_BUF[i]);
         }
 
-                if(mRs485Thread.state == STATE_WORKING_MASTER){ // it is a master
-        addr16 = 0x00;
-        addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
-        }else{ // it is a slave
-addr16 = addr16LastTime; // get the address from the loraThread
-        }
-
-        if(indexRx <= 2){
-            printf("too few bytes\r\n");
-
-        }else{
-            SendOutLoraData(addr16, RX_BUF, indexRx);
-        }
-
-        indexRx = 0;
-
-        mRs485State = RS485_STATE_RX_NONE;
-
-        // toggle led2
-         FlashLED2();
-
-    }
-    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_NONE)
-    {
-
-    }
-
-}
-static  void TaskHandlerWorkingMaster(osEvent ret)
-{
-    uint8_t i;
-    uint16_t addr16;
-
-    if(ret.status ==  osEventSignal&& ret.value.v == 1&& mRs485State== RS485_STATE_RX_NONE)
-    {
-        mRs485State = RS485_STATE_RX_WAITING;
-
-    }
-    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_WAITING)
-    {
-        // frame ended
-        // send it out
-
-        printf("master get data from RS485, len:%d\r\n",indexRx);
-
-        for(i=0; i< indexRx; i++)
+        if(mRs485Thread.state == STATE_WORKING_MASTER)  // it is a master
         {
-            printf("0x%02x\r\n", RX_BUF[i]);
+            addr16 = 0x00;
+            addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
         }
-
-
-
-        
-        addr16 = 0x00;
-        addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
-
-        if(indexRx <= 2){
-            printf("too few bytes\r\n");
-
-        }else{
-            SendOutLoraData(addr16, RX_BUF, indexRx);
-        }
-
-        indexRx = 0;
-
-        mRs485State = RS485_STATE_RX_NONE;
-
-        // toggle led2
-         FlashLED2();
-
-    }
-    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_NONE)
-    {
-
-    }
-}
-static  void TaskHandlerWorkingSlave(osEvent ret)
-{
-    uint8_t i;
-    uint16_t addr16;
-
-    if(ret.status ==  osEventSignal&& ret.value.v == 1&& mRs485State== RS485_STATE_RX_NONE)
-    {
-        mRs485State = RS485_STATE_RX_WAITING;
-
-    }
-    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_WAITING)
-    {
-        // frame ended
-        // send it out
-
-        printf("slave get data from RS485, len:%d\r\n",indexRx);
-
-        for(i=0; i< indexRx; i++)
+        else   // it is a slave
         {
-            printf("0x%02x\r\n", RX_BUF[i]);
+            addr16 = addr16LastTime; // get the address from the loraThread
         }
-        addr16 = addr16LastTime; // get the address from the loraThread
 
-        if(indexRx < 3){
+        if(indexRx <= 2)
+        {
             printf("too few bytes\r\n");
 
-        }else{
+        }
+        else
+        {
             SendOutLoraData(addr16, RX_BUF, indexRx);
         }
 
@@ -370,21 +341,23 @@ static  void TaskHandlerWorkingSlave(osEvent ret)
         mRs485State = RS485_STATE_RX_NONE;
 
         // toggle led2
-         FlashLED2();
+        FlashLED2();
 
     }
     else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_NONE)
     {
 
     }
+
 }
+
 static  void TaskHandlerWaiting(osEvent ret)
 {
 
     if(ret.status ==  osEventSignal)
     {
         printf("Should go to Config state\r\n");
-        printf("%s is a match\r\n", RX_BUF);
+        printf("%s is a match, now in Config state\r\n", RX_BUF);
 
         UART3_Transmit("OK\r\n", 4);
 
@@ -433,12 +406,12 @@ static void TaskLoop(void const * argument)
         else if(mRs485Thread.state == STATE_WORKING_MASTER)
         {
             ret = osSignalWait(0x3, 15);
-            TaskHandlerWorkingMaster(ret);
+            TaskHandlerWorking(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_SLAVE)
         {
             ret = osSignalWait(0x3, 15);
-            TaskHandlerWorkingSlave(ret);
+            TaskHandlerWorking(ret);
 
         }
         else if(mRs485Thread.state == STATE_WAITING)

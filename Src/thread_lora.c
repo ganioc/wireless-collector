@@ -115,6 +115,8 @@ static void HandleLoraBytes(uint8_t * inBuf, uint8_t inLen)
         for(i=0; i< MAX_DATA_LENGTH; i++){
             RX_BUF_FOR_RS485[indexRxForRs485++]=inBuf[i];
         }
+    }else{
+        printf("Invalid data received\r\n");
     }
 
 }
@@ -144,7 +146,7 @@ static void TaskLoopRx()
             // frame ended
             // send it out
 
-            printf("Master get data from Lora, len:%d\r\n",indexRxLora);
+            printf("Get data from Lora, len:%d\r\n",indexRxLora);
 
             for(i=0; i< indexRxLora; i++)
             {
@@ -152,7 +154,7 @@ static void TaskLoopRx()
             }
 
             // send it to RS485 port
-            if(indexRxLora < 4)
+            if(indexRxLora <= 4)
             {
                 printf("too few bytes\r\n");
             }

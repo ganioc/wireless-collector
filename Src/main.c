@@ -110,9 +110,7 @@ int main(void)
   
   printf("\n=====================Start====================\n");
   
-  MX_USART2_UART_Init();
-  MX_USART3_UART_Init();
-  MX_USB_PCD_Init();
+
   MX_WWDG_Init();
   
   Start_WWDG();
@@ -120,6 +118,10 @@ int main(void)
   MX_I2C1_Init();
   
   E2PROM_Init();
+
+  MX_USART2_UART_Init();
+  MX_USART3_UART_Init();
+  MX_USB_PCD_Init();
 
   /* USER CODE BEGIN 2 */
   

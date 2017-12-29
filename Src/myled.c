@@ -39,3 +39,13 @@ void  FlashLED2(){
 //            LED2_Toggle();
 }
 
+uint8_t bSetDefaultKey(){
+    GPIO_PinState state = HAL_GPIO_ReadPin(DEFAULT_KEY_PORT, DEFAULT_KEY_PIN);
+
+    if(state == GPIO_PIN_SET){
+        return 1;
+    }else{
+        return 0;
+    }
+}
+

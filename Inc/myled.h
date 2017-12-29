@@ -24,6 +24,9 @@
 #define  LED2_Toggle() do{LED_Toggle(LED2);}while(0)
 
 
+#define  DEFAULT_KEY_PIN     GPIO_PIN_15
+#define  DEFAULT_KEY_PORT   GPIOB
+
 void LED_On(uint16_t pin);
 void LED_Off(uint16_t pin);
 void LED_Toggle(uint16_t pin);
@@ -32,5 +35,7 @@ void SetLED1Quick();
 void SetLED1Slow();
 void SetLED1Normal();
 void  FlashLED2();
+
+uint8_t bSetDefaultKey();
 
 #endif

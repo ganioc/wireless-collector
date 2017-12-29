@@ -90,6 +90,10 @@ printf
   #define PUTCHAR_PROTOTYPE int fputc(int ch, FILE *f)
 
 #endif
+
+
+void DeInitUart3(void);
+void ReInitUart3(uint32_t baudrate, uint32_t stopbits, uint32_t parity);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

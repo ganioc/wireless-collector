@@ -17,6 +17,7 @@ void parseConfigSet(char* str, uint8_t len)
     char strContent[16];
     uint8_t i, j=0;
     SysInfo_t *pSysInfo ;
+    Rs485Info_t  * pRs485Info;
     uint16_t addr16, channel;
 
     for(i=0; i< 4; i++)
@@ -40,45 +41,105 @@ void parseConfigSet(char* str, uint8_t len)
     else if(strcmp(strObj, "ADDR") == 0)
     {
         printf("address config\r\n");
-        
-        if(strlen(strContent) > 3 ||strlen(strContent) == 0 ){
+
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0)
+        {
             printf("wrong format of addr: %d\r\n", strlen(strContent));
-        }else{
+        }
+        else
+        {
             // save addr
             // strContent to number
             addr16 = atoi((char*)strContent);
-            
+
             pSysInfo = getSysInfoPointer();
             pSysInfo->addrH= 0xff&(addr16>>8);
             pSysInfo->addrL = 0xff&addr16;
-            
-            printf("Set addr to:0x%x%x\r\n", 
-                        pSysInfo->addrH,
-                        pSysInfo->addrL);
+
+            printf("Set addr to:0x%x%x\r\n",
+                   pSysInfo->addrH,
+                   pSysInfo->addrL);
         }
-        
+
     }
     else if(strcmp(strObj, "CHAN") == 0)
     {
         printf("channel config\r\n");
-        if(strlen(strContent) > 3 ||strlen(strContent) == 0 ){
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0)
+        {
             printf("wrong format of chan: %d\r\n", strlen(strContent));
-        }else{
+        }
+        else
+        {
             // save addr
             pSysInfo = getSysInfoPointer();
             channel = atoi((char*)strContent);
             pSysInfo->chan= channel & 0xff;
 
-            printf("Set channel to:0x%x\r\n", 
-                        pSysInfo->chan);
+            printf("Set channel to:0x%x\r\n",
+                   pSysInfo->chan);
         }
 
+    }
+    else if(strcmp(strObj, "BAUD") == 0)
+    {
+        printf("RS485 portl baudrate config\r\n");
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0)
+        {
+            printf("wrong format of baudrate: %d\r\n", strlen(strContent));
+        }
+        else
+        {
+            // save baudrate
+            pRs485Info = getRs485InfoPointer();
+            channel = atoi((char*)strContent);
+            pRs485Info->baudRate= channel & 0xff;
+
+            printf("Set baudrate to:0x%x\r\n",
+                   pRs485Info->baudRate);
+        }
+    }
+    else if(strcmp(strObj, "PARI") == 0)
+    {
+        printf("RS485 portl parity config\r\n");
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0)
+        {
+            printf("wrong format of parity: %d\r\n", strlen(strContent));
+        }
+        else
+        {
+            // save parity
+            pRs485Info = getRs485InfoPointer();
+            channel = atoi((char*)strContent);
+            pRs485Info->parity= channel & 0xff;
+
+            printf("Set parity to:0x%x\r\n",
+                   pRs485Info->parity);
+        }
+    }
+    else if(strcmp(strObj, "STOP") == 0)
+    {
+        printf("RS485 portl stopbits config\r\n");
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0)
+        {
+            printf("wrong format of stopbits: %d\r\n", strlen(strContent));
+        }
+        else
+        {
+            // save stopbits
+            pRs485Info = getRs485InfoPointer();
+            channel = atoi((char*)strContent);
+            pRs485Info->stopBit= channel & 0xff;
+
+            printf("Set stopbits to:0x%x\r\n",
+                   pRs485Info->stopBit);
+        }
     }
     else if(strcmp(strObj, "SAVE") == 0)
     {
         printf("save to e2prom config\r\n");
         saveSysInfoPointer();
-
+        saveRs485InfoPointer();
     }
     else if(strcmp(strObj, "MAST") == 0)
     {
@@ -93,7 +154,9 @@ void parseConfigSet(char* str, uint8_t len)
         pSysInfo = getSysInfoPointer();
         pSysInfo->role = ROLE_SLAVE;
     }
-    else{
+
+    else
+    {
 
         printf("Unrecognized configset cmd\r\n%s\r\n", strObj);
     }
@@ -104,6 +167,7 @@ void parseConfigRead(char* str, uint8_t len)
     char strBuf[64];
     uint8_t i;
     SysInfo_t *pSysInfo ;
+    Rs485Info_t *pRs485Info;
 
     for(i=0; i< 4; i++)
     {
@@ -125,17 +189,33 @@ void parseConfigRead(char* str, uint8_t len)
     {
 
         printf("read sys info\r\n");
-
-    
         pSysInfo = getSysInfoPointer();
+
+        sprintf(strBuf, "version%d:%s\r\n", strlen(pSysInfo->version), pSysInfo->version);
+        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+
+        sprintf(strBuf, "model%d:%s\r\n", strlen(pSysInfo->model), pSysInfo->model);
+        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+
+
+
         sprintf(strBuf,"addr:0x%x%x\r\n", pSysInfo->addrH, pSysInfo->addrL);
         UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
         sprintf(strBuf,"chan:0x%x\r\n", pSysInfo->chan);
         UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
         sprintf(strBuf,"role:0x%x\r\n", pSysInfo->role);
-        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));        
+        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+
+        pRs485Info = getRs485InfoPointer();
+        sprintf(strBuf,"Rs485 port:baudrate 0x%02x, parity 0x%02x, stopbits 0x%02x\r\n",
+                pRs485Info->baudRate,
+                pRs485Info->parity,
+                pRs485Info->stopBit);
+        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+
     }
-    else{
+    else
+    {
 
         printf("Unrecognized configread cmd \n%s\r\n", strObj);
     }
@@ -162,7 +242,7 @@ void parseConfig(char* str, uint8_t len)
     if(strcmp(strType, "SET*")==0)
     {
         parseConfigSet(strObj, strlen(strObj));
-        
+
     }
     else if(strcmp(strType, "READ")==0)
     {

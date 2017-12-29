@@ -55,7 +55,7 @@
 #include "myled.h"
 #include "thread_rs485.h"
 #include "thread_lora.h"
-
+#include "mye2prom.h"
 /* USER CODE END Includes */
 
 /* Variables -----------------------------------------------------------------*/
@@ -64,6 +64,9 @@ osThreadId defaultTaskHandle;
 /* USER CODE BEGIN Variables */
 extern uint16_t mDelayPeriod;
 extern uint32_t wwdg_life_counter ;
+
+uint8_t setDefaultCounter=0;
+
 /* USER CODE END Variables */
 
 /* Function prototypes -------------------------------------------------------*/
@@ -111,7 +114,30 @@ void MX_FREERTOS_Init(void) {
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 }
+void CheckSetDefault(){
+    if(bSetDefaultKey() == 0){
+        setDefaultCounter++;
+    }else{
+        setDefaultCounter=0;
+    }
 
+    if(setDefaultCounter == 8){
+        printf("Set it to default config\r\n");
+        SetLED1Quick();
+    }else if( setDefaultCounter == 16){
+        // reset the E2PROM
+        ResetToDefaultE2Prom();
+
+        printf("Restart the board now, dont hold it now ...\r\n");
+        SetLED1Slow();
+        
+    }else if(setDefaultCounter ==18){
+    
+        // then restart the board
+        HAL_NVIC_SystemReset();
+    }
+
+}
 /* StartDefaultTask function */
 void StartDefaultTask(void const * argument)
 {
@@ -123,6 +149,9 @@ void StartDefaultTask(void const * argument)
      osDelay(mDelayPeriod);
      LED1_Toggle();
      wwdg_life_counter = 0;
+
+     CheckSetDefault();
+     
   }
   /* USER CODE END StartDefaultTask */
 }

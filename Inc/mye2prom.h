@@ -19,11 +19,12 @@ there are 32 sections
 **/
 
 #define SECTION_MBRINFO     0
-#define SECTION_SYSINFO   0
+#define SECTION_SYSINFO      0
+#define SECTION_RS485INFO  0
 
 #define PAGE_MBRINFO          0
-#define PAGE_SYSINFO        1
-
+#define PAGE_SYSINFO          1
+#define PAGE_RS485INFO       2
 
 #define E2PROM_ADDR   0xA0
 #define E2PROM_MAXPKT   32
@@ -56,13 +57,27 @@ typedef struct SysInfo
 
 } SysInfo_t;
 
+typedef struct Rs485Info{
+    uint8_t baudRate;
+    uint8_t parity; 
+    uint8_t stopBit;
+    
+}Rs485Info_t;
+
 #define MBRINFO_SIZE                    sizeof(MBRInfo_t)
 #define SYSINFO_SIZE                  sizeof(SysInfo_t)
+#define RS485INFO_SIZE              sizeof(Rs485Info_t)
 
 void E2PROM_Init(void);
-SysInfo_t* getSysInfoPointer();
 
+SysInfo_t* getSysInfoPointer();
 void saveSysInfoPointer();
+
+Rs485Info_t* getRs485InfoPointer();
+void saveRs485InfoPointer();
+
 uint8_t getSysInfoChannel();
-uint8_t getSysInfoRole();
+uint8_t getSysInfoRole();    
+
+void ResetToDefaultE2Prom();
 #endif
