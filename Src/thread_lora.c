@@ -156,13 +156,13 @@ static void TaskLoop(void const * argument)
     if(getSysInfoRole() == 1)
     {
         mLoraThread.state = LORA_STATE_ROLE_MASTER;
-        TaskLoopRx();
     }
     else // if it's a slave
     {
         mLoraThread.state= LORA_STATE_ROLE_SLAVE;
-        TaskLoopRx();
     }
+
+    TaskLoopRx();
 
 }
 

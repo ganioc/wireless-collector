@@ -145,13 +145,7 @@ static void handleByteConfig(uint8_t c)
 /**
 * 收到发来的数据，就把数据发给lorathread线程
 **/
-static void handleByteWorkingForMaster(uint8_t c)
-{
-    RX_BUF[indexRx++] = c;
-    osSignalSet(mRs485Thread.idThread, 0x01);
-}
-
-static void handleByteWorkingForSlave(uint8_t c)
+static void handleByteWorking(uint8_t c)
 {
     RX_BUF[indexRx++] = c;
     osSignalSet(mRs485Thread.idThread, 0x01);
@@ -167,13 +161,10 @@ static void handleByte(uint8_t c)
     {
         handleByteConfig(c);
     }
-    else if(mRs485Thread.state == STATE_WORKING_MASTER)
+    else if(mRs485Thread.state == STATE_WORKING_MASTER
+                || mRs485Thread.state == STATE_WORKING_SLAVE)
     {
-        handleByteWorkingForMaster(c);
-    }
-    else if(mRs485Thread.state == STATE_WORKING_SLAVE)
-    {
-        handleByteWorkingForSlave(c);
+        handleByteWorking(c);
     }
 
 }
