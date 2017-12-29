@@ -17,7 +17,7 @@ void parseConfigSet(char* str, uint8_t len)
     char strContent[16];
     uint8_t i, j=0;
     SysInfo_t *pSysInfo ;
-    uint16_t addr16;
+    uint16_t addr16, channel;
 
     for(i=0; i< 4; i++)
     {
@@ -61,12 +61,13 @@ void parseConfigSet(char* str, uint8_t len)
     else if(strcmp(strObj, "CHAN") == 0)
     {
         printf("channel config\r\n");
-        if(strlen(strContent)!= 1){
-            printf("wrong format of addr: %d\r\n", strlen(strContent));
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0 ){
+            printf("wrong format of chan: %d\r\n", strlen(strContent));
         }else{
             // save addr
             pSysInfo = getSysInfoPointer();
-            pSysInfo->chan= strContent[0];
+            channel = atoi((char*)strContent);
+            pSysInfo->chan= channel & 0xff;
 
             printf("Set channel to:0x%x\r\n", 
                         pSysInfo->chan);
