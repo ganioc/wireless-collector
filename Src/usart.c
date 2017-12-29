@@ -49,7 +49,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usart.h"
-
+#include "thread_rs485.h"
 #include "gpio.h"
 
 /* USER CODE BEGIN 0 */
@@ -126,7 +126,7 @@ void DeInitUart3(void)
 }
 void ReInitUart3(uint32_t baudrate, uint32_t stopbits, uint32_t parity)
 {
-    HAL_NVIC_DisableIRQ(USART3_IRQn);
+    //HAL_NVIC_DisableIRQ(USART3_IRQn);
     
     huart3.Instance = USART3;
     huart3.Init.BaudRate = baudrate;
@@ -142,7 +142,77 @@ void ReInitUart3(uint32_t baudrate, uint32_t stopbits, uint32_t parity)
     }
 
 }
+ void SetRs485WorkingBaudrate(Rs485Info_t  *pRs485Inf)
+{
+    uint32_t baudrate,  stopbits,  parity;
 
+    if(pRs485Inf->baudRate == RS485_BAUDRATE_9600)
+    {
+        baudrate = 9600;
+        printf("Rs485 baudrate: 9600\r\n");
+    }
+    else if(pRs485Inf->baudRate == RS485_BAUDRATE_19200)
+    {
+        baudrate = 19200;
+        printf("Rs485 baudrate: 19200\r\n");
+    }
+    else
+    {
+        baudrate = 9600;
+        printf("Rs485 baudrate: 9600\r\n");
+    }
+    if(pRs485Inf->stopBit== RS485_STOP_BITS_NONE)
+    {
+        stopbits = UART_STOPBITS_1;
+        printf("Rs485 stopbits: 1\r\n");
+    }
+    else if(pRs485Inf->stopBit == RS485_STOP_BITS_1)
+    {
+        stopbits = UART_STOPBITS_1;
+        printf("Rs485 stopbits: 1\r\n");
+    }
+    else if(pRs485Inf->stopBit == RS485_STOP_BITS_2)
+    {
+        stopbits = UART_STOPBITS_2;
+        printf("Rs485 stopbits: 2\r\n");
+    }
+    else
+    {
+        stopbits = UART_STOPBITS_1;
+        printf("Rs485 stopbits:1\r\n");
+    }
+
+    if(pRs485Inf->parity == RS485_PARITY_NONE)
+    {
+        parity = UART_PARITY_NONE;
+        printf("Rs485 parity: NONE\r\n");
+    }
+    else if(pRs485Inf->parity == RS485_PARITY_EVEN)
+    {
+        parity = UART_PARITY_EVEN;
+        printf("Rs485 parity: EVEN\r\n");
+    }
+    else if(pRs485Inf->parity == RS485_PARITY_ODD)
+    {
+        parity = UART_PARITY_ODD;
+        printf("Rs485 parity: ODD\r\n");
+    }
+    else
+    {
+        parity = UART_PARITY_NONE;
+        printf("Rs485 parity:NONE\r\n");
+    }
+    // I failed to modify the baud rate at runtime.
+
+    //DeInitUart3();
+
+    ReInitUart3( baudrate,  stopbits,  parity);
+
+    printf("Use new RS485 port config\r\n");
+
+
+
+}
 void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 {
 

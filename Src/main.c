@@ -83,6 +83,7 @@ void MX_FREERTOS_Init(void);
 
 int main(void)
 {
+    Rs485Info_t  *pRs485Info;
 
   /* USER CODE BEGIN 1 */
 
@@ -120,7 +121,12 @@ int main(void)
   E2PROM_Init();
 
   MX_USART2_UART_Init();
-  MX_USART3_UART_Init();
+
+  pRs485Info = getRs485InfoPointer();
+  
+  // MX_USART3_UART_Init();
+  SetRs485WorkingBaudrate(pRs485Info);
+  
   MX_USB_PCD_Init();
 
   /* USER CODE BEGIN 2 */

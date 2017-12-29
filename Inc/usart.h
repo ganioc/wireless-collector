@@ -58,7 +58,7 @@
 #include "main.h"
 
 /* USER CODE BEGIN Includes */
-
+#include "mye2prom.h"
 /* USER CODE END Includes */
 
 extern UART_HandleTypeDef huart1;
@@ -94,6 +94,7 @@ printf
 
 void DeInitUart3(void);
 void ReInitUart3(uint32_t baudrate, uint32_t stopbits, uint32_t parity);
+void SetRs485WorkingBaudrate(Rs485Info_t  *pRs485Inf);
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus
