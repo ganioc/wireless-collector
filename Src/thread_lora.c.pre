@@ -20,6 +20,10 @@ void (*handlerByteLora)(uint8_t c);
 uint8_t RX_BUF_LORA[BUFFER_MAX_SIZE_RS485];
 uint8_t indexRxLora = 0;
 
+// packet storage for lora data
+uint8_t RX_BUF_FOR_RS485[BUFFER_MAX_SIZE_RS485];
+uint8_t indexRxForRs485 = 0;
+
 uint8_t mLoraState;
 
 uint16_t  addr16LastTime;
@@ -51,103 +55,68 @@ static void loraHandleByte(uint8_t c)
     osSignalSet(mLoraThread.idThread, 0x01);
 
 }
-static void TaskLoop()
-{
-
-    osEvent ret;
-    uint16_t i, lenData, addr16;
-
-    while(1)
-    {
-        // waiting for the comming characters
-        ret = osSignalWait(0x3, 10);
-
-        if(ret.status ==  osEventSignal && ret.value.v == 1&& mLoraState  == LORA_STATE_RX_NONE)
-        {
-            //printf("lorathread signal 1 rx\r\n");
-            mLoraState = LORA_STATE_RX_WAITING;
-
-        }
-        else if(ret.status ==  osEventSignal && ret.value.v == 2)
-        {
-            printf("lorathread signal 2 rx\r\n");
-        }
-        else if(ret.status == osEventTimeout && mLoraState == LORA_STATE_RX_WAITING)
-        {
-            // frame ended
-            // send it out
-
-            printf("Master get data from Lora, len:%d\r\n",indexRxLora);
-
-            for(i=0; i< indexRxLora; i++)
-            {
-                printf("0x%02x\r\n", RX_BUF_LORA[i]);
-            }
-
-            
-                if(indexRxLora < 4)
-                {
-                    printf("too few bytes\r\n");
-
-                }
-                else if(RX_BUF_LORA[0] == 0x3a
-                        && RX_BUF_LORA[indexRxLora-1] == 0x0a
-                        && RX_BUF_LORA[indexRxLora-2]== 0x0d)
-                {
-
-
-                    lenData = RX_BUF_LORA[5]<< 8| RX_BUF_LORA[6];
-
-                    SendOutRs485Data(RX_BUF_LORA + 7, lenData);
-                }
-
-           
-
-                // send it to RS485 port
-                if(indexRxLora < 4)
-                {
-                    printf("too few bytes\r\n");
-                }
-                else if(RX_BUF_LORA[0] == 0x3a
-                        && RX_BUF_LORA[indexRxLora-1] == 0x0a
-                        && RX_BUF_LORA[indexRxLora-2]== 0x0d
-
-                       )
-                {
-                    if(mLoraThread.state == LORA_STATE_ROLE_MASTER)
-            {
-                    
-                    addr16LastTime = RX_BUF_LORA[1]<< 8| RX_BUF_LORA[2];
-                     }
-            else  // it is a slave
-            { }
-                    
-                    lenData = RX_BUF_LORA[5]<< 8| RX_BUF_LORA[6];
-
-                    SendOutRs485Data(RX_BUF_LORA + 7, lenData);
-                }
-           
-
-
-
-
-
-            indexRxLora = 0;
-
-            mLoraState = LORA_STATE_RX_NONE;
-
-            // toggle led2
-            FlashLED2();
-
-        }
-        else if(ret.status == osEventTimeout && mLoraState == LORA_STATE_RX_NONE)
-        {
-
-        }
+uint8_t bExactLen(uint8_t lenH, uint8_t lenL, uint8_t lenPacket){
+    if(lenH==0&& lenL == lenPacket){
+        return 1;
     }
+
+    return 0;
 }
-static void TaskLoopMaster()
+static void HandleLoraBytes(uint8_t * inBuf, uint8_t inLen)
 {
+    if(inLen < MAX_DATA_LENGTH 
+        && inBuf[0] == 0x3a
+        && inBuf[inLen-1] == 0x0a
+        && inBuf[inLen-2]== 0x0d
+        && bExactLen(inBuf[5], inBuf[6], inLen - 9)){ // Whole packet
+        
+     if(mLoraThread.state == LORA_STATE_ROLE_SLAVE)
+        {
+
+            addr16LastTime = RX_BUF_LORA[1]<< 8| RX_BUF_LORA[2];
+        }
+
+    }else if(inLen < MAX_DATA_LENGTH 
+        && (inBuf[inLen-1] == 0x0a )){ // Last packet
+
+
+    }else  if(inLen == MAX_DATA_LENGTH 
+        && inBuf[0] == 0x3a
+        && inBuf[inLen-1] == 0x0a
+        && inBuf[inLen-2]== 0x0d && bExactLen(inBuf[5], inBuf[6], 
+        MAX_DATA_LENGTH-9)){ // Whole packet
+        
+    
+
+    }else if(inLen == MAX_DATA_LENGTH){ // Middle packet
+
+
+    }
+
+    if(inBuf[0] == 0x3a
+        && inBuf[inLen-1] == 0x0a
+       && inBuf[inLen-2]== 0x0d 
+       && ) // if it is the whole packet
+    {
+        if(mLoraThread.state == LORA_STATE_ROLE_SLAVE)
+        {
+
+            addr16LastTime = RX_BUF_LORA[1]<< 8| RX_BUF_LORA[2];
+        }
+
+        lenData = RX_BUF_LORA[5]<< 8| RX_BUF_LORA[6];
+
+        SendOutRs485Data(RX_BUF_LORA + 7, lenData);
+    }else if(RX_BUF_LORA[0] == 0x3a
+        && ){
+
+
+    }
+
+}
+static void TaskLoopRx()
+{
+
     osEvent ret;
     uint16_t i, lenData;
 
@@ -178,25 +147,19 @@ static void TaskLoopMaster()
                 printf("0x%02x\r\n", RX_BUF_LORA[i]);
             }
 
+            // send it to RS485 port
             if(indexRxLora < 4)
             {
                 printf("too few bytes\r\n");
-
             }
-            else if(RX_BUF_LORA[0] == 0x3a
-                    && RX_BUF_LORA[indexRxLora-1] == 0x0a
-                    && RX_BUF_LORA[indexRxLora-2]== 0x0d)
+            else
             {
 
-                // addr16 = RX_BUF_LORA[1]<< 8| RX_BUF_LORA[2];
-                // addr16LastTime = addr16;
-                lenData = RX_BUF_LORA[5]<< 8| RX_BUF_LORA[6];
+                HandleLoraBytes(RX_BUF_LORA, indexRxLora);
 
-                SendOutRs485Data(RX_BUF_LORA + 7, lenData);
             }
 
-
-
+            // Housekeeping
             indexRxLora = 0;
 
             mLoraState = LORA_STATE_RX_NONE;
@@ -211,69 +174,7 @@ static void TaskLoopMaster()
         }
     }
 }
-static void TaskLoopSlave()
-{
-    osEvent ret;
-    uint8_t i;
-    uint16_t addr16, lenData;
 
-    while(1)
-    {
-        // waiting for the comming characters
-        ret = osSignalWait(0x3, 10);
-
-        if(ret.status ==  osEventSignal && ret.value.v == 1&& mLoraState
-           == LORA_STATE_RX_NONE)
-        {
-            mLoraState = LORA_STATE_RX_WAITING;
-        }
-        else if(ret.status == osEventTimeout && mLoraState == LORA_STATE_RX_WAITING)
-        {
-            // frame ended
-            // send it out
-
-            printf("slave rx from lora: len:%d\r\n",indexRxLora);
-
-            for(i=0; i< indexRxLora; i++)
-            {
-                printf("0x%02x\r\n", RX_BUF_LORA[i]);
-            }
-
-            // send it to RS485 port
-            if(indexRxLora < 4)
-            {
-                printf("too few bytes\r\n");
-            }
-            else if(RX_BUF_LORA[0] == 0x3a
-                    && RX_BUF_LORA[indexRxLora-1] == 0x0a
-                    && RX_BUF_LORA[indexRxLora-2]== 0x0d
-
-                   )
-            {
-                addr16 = RX_BUF_LORA[1]<< 8| RX_BUF_LORA[2];
-                addr16LastTime = addr16;
-                lenData = RX_BUF_LORA[5]<< 8| RX_BUF_LORA[6];
-
-                SendOutRs485Data(RX_BUF_LORA + 7, lenData);
-            }
-
-
-
-            indexRxLora = 0;
-
-            mLoraState = LORA_STATE_RX_NONE;
-
-            // toggle led2
-
-            FlashLED2();
-
-        }
-        else if(ret.status == osEventTimeout && mLoraThread.state == LORA_STATE_RX_NONE)
-        {
-
-        }
-    }
-}
 static void TaskLoop(void const * argument)
 {
     osEvent ret;
@@ -309,13 +210,13 @@ static void TaskLoop(void const * argument)
     if(getSysInfoRole() == 1)
     {
         mLoraThread.state = LORA_STATE_ROLE_MASTER;
-        TaskLoopMaster();
     }
     else // if it's a slave
     {
         mLoraThread.state= LORA_STATE_ROLE_SLAVE;
-        TaskLoopSlave();
     }
+
+    TaskLoopRx();
 
 }
 

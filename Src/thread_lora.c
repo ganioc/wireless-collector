@@ -55,11 +55,74 @@ static void loraHandleByte(uint8_t c)
     osSignalSet(mLoraThread.idThread, 0x01);
 
 }
+uint8_t bExactLen(uint8_t lenH, uint8_t lenL, uint8_t lenPacket)
+{
+    if((lenH<<8 | lenL) == lenPacket)
+    {
+        return 1;
+    }
+
+    return 0;
+}
+static void HandleLoraBytes(uint8_t * inBuf, uint8_t inLen)
+{
+    uint8_t i;
+    uint16_t len16;
+    
+    if(inLen <= MAX_DATA_LENGTH
+       && inLen > 9
+       && inBuf[0] == 0x3a
+       && inBuf[inLen-1] == 0x0a
+       && inBuf[inLen-2]== 0x0d
+       && bExactLen(inBuf[5], inBuf[6], inLen - 9))  // Whole packet
+    {
+
+        if(mLoraThread.state == LORA_STATE_ROLE_SLAVE)
+        {
+            addr16LastTime = inBuf[1]<< 8| inBuf[2];
+        }
+
+        SendOutRs485Data(inBuf + 7,  inBuf[5]<< 8| inBuf[6]);
+
+    }
+    else if(inLen < MAX_DATA_LENGTH)   // Last packet
+    {
+        for(i=0; i< inLen; i++){
+            RX_BUF_FOR_RS485[indexRxForRs485++]=inBuf[i];
+        }
+        len16 = RX_BUF_FOR_RS485[5]<< 8| RX_BUF_FOR_RS485[6];
+        
+        SendOutRs485Data(RX_BUF_FOR_RS485+7, len16);
+
+        indexRxForRs485 = 0;
+    }
+    else if(inLen == MAX_DATA_LENGTH
+        && inBuf[0] == 0x3a
+        && inBuf[1] == 0x00)   // First packet 
+    {
+        if(mLoraThread.state == LORA_STATE_ROLE_SLAVE)
+        {
+            addr16LastTime = inBuf[1]<< 8| inBuf[2];
+        }
+        indexRxForRs485 =0;
+        
+        for(i=0; i< MAX_DATA_LENGTH; i++){
+            RX_BUF_FOR_RS485[indexRxForRs485++]=inBuf[i];
+        }
+
+    }else if(inLen == MAX_DATA_LENGTH) // Middle packet
+    {
+        for(i=0; i< MAX_DATA_LENGTH; i++){
+            RX_BUF_FOR_RS485[indexRxForRs485++]=inBuf[i];
+        }
+    }
+
+}
 static void TaskLoopRx()
 {
 
     osEvent ret;
-    uint16_t i, lenData;
+    uint16_t i;
 
     while(1)
     {
@@ -93,23 +156,12 @@ static void TaskLoopRx()
             {
                 printf("too few bytes\r\n");
             }
-            else if(RX_BUF_LORA[0] == 0x3a
-                    && RX_BUF_LORA[indexRxLora-1] == 0x0a
-                    && RX_BUF_LORA[indexRxLora-2]== 0x0d
-
-                   )
+            else
             {
-                if(mLoraThread.state == LORA_STATE_ROLE_SLAVE)
-                {
-
-                    addr16LastTime = RX_BUF_LORA[1]<< 8| RX_BUF_LORA[2];
-                }
-
-                lenData = RX_BUF_LORA[5]<< 8| RX_BUF_LORA[6];
-
-                SendOutRs485Data(RX_BUF_LORA + 7, lenData);
+                HandleLoraBytes(RX_BUF_LORA, indexRxLora);
             }
 
+            // Housekeeping
             indexRxLora = 0;
 
             mLoraState = LORA_STATE_RX_NONE;
