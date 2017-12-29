@@ -237,8 +237,9 @@ static  void TaskHandlerConfig(osEvent ret)
         switchToWorking();
     }
 }
-static  void TaskHandlerWorkingMaster(osEvent ret)
+static void TaskHandlerWorking(osEvent ret)
 {
+
     uint8_t i;
     uint16_t addr16;
 
@@ -258,56 +259,24 @@ static  void TaskHandlerWorkingMaster(osEvent ret)
         {
             printf("0x%02x\r\n", RX_BUF[i]);
         }
-        addr16 = 0x00;
-        addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
 
-        if(indexRx <= 2){
-            printf("too few bytes\r\n");
-
-        }else{
-            SendOutLoraData(addr16, RX_BUF, indexRx);
-        }
-
-        indexRx = 0;
-
-        mRs485State = RS485_STATE_RX_NONE;
-
-        // toggle led2
-         FlashLED2();
-
-    }
-    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_NONE)
-    {
-
-    }
-}
-static  void TaskHandlerWorkingSlave(osEvent ret)
-{
-    uint8_t i;
-    uint16_t addr16;
-
-    if(ret.status ==  osEventSignal&& ret.value.v == 1&& mRs485State== RS485_STATE_RX_NONE)
-    {
-        mRs485State = RS485_STATE_RX_WAITING;
-
-    }
-    else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_WAITING)
-    {
-        // frame ended
-        // send it out
-
-        printf("slave get data from RS485, len:%d\r\n",indexRx);
-
-        for(i=0; i< indexRx; i++)
+        if(mRs485Thread.state == STATE_WORKING_MASTER)  // it is a master
         {
-            printf("0x%02x\r\n", RX_BUF[i]);
+            addr16 = 0x00;
+            addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
         }
-        addr16 = addr16LastTime; // get the address from the loraThread
+        else   // it is a slave
+        {
+            addr16 = addr16LastTime; // get the address from the loraThread
+        }
 
-        if(indexRx < 3){
+        if(indexRx <= 2)
+        {
             printf("too few bytes\r\n");
 
-        }else{
+        }
+        else
+        {
             SendOutLoraData(addr16, RX_BUF, indexRx);
         }
 
@@ -316,14 +285,16 @@ static  void TaskHandlerWorkingSlave(osEvent ret)
         mRs485State = RS485_STATE_RX_NONE;
 
         // toggle led2
-         FlashLED2();
+        FlashLED2();
 
     }
     else if(ret.status == osEventTimeout && mRs485State == RS485_STATE_RX_NONE)
     {
 
     }
+
 }
+
 static  void TaskHandlerWaiting(osEvent ret)
 {
 
@@ -379,12 +350,12 @@ static void TaskLoop(void const * argument)
         else if(mRs485Thread.state == STATE_WORKING_MASTER)
         {
             ret = osSignalWait(0x3, 15);
-            TaskHandlerWorkingMaster(ret);
+            TaskHandlerWorking(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_SLAVE)
         {
             ret = osSignalWait(0x3, 15);
-            TaskHandlerWorkingSlave(ret);
+            TaskHandlerWorking(ret);
 
         }
         else if(mRs485Thread.state == STATE_WAITING)
