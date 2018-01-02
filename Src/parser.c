@@ -8,6 +8,7 @@
 #include "usart.h"
 #include <stdlib.h>
 
+
 extern TaskThread_t mRs485Thread;
 
 
@@ -177,7 +178,7 @@ void parseConfigRead(char* str, uint8_t len)
 
     if(strcmp(strObj, "VER*") == 0)
     {
-
+        printf("Version:%s\r\n", HADRWIRED_VERSION);
 
     }
     else if(strcmp(strObj, "MODL") == 0)

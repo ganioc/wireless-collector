@@ -48,7 +48,7 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
         uint8_t index = 0;
         uint8_t i,j,nTemp, nTotal;
 
-        printf("Send to %d at %d\r\n", addr, channel);
+        printf("SendOut Lora data  to addr: %d at channel %d\r\n", addr, channel);
 
         buf[index++] = FRAME_HEAD;
         buf[index++] = pSysInfo->addrH;

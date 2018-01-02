@@ -136,6 +136,7 @@ void ReInitUart3(uint32_t baudrate, uint32_t stopbits, uint32_t parity)
     huart3.Init.Mode = UART_MODE_TX_RX;
     huart3.Init.HwFlowCtl = UART_HWCONTROL_NONE;
     huart3.Init.OverSampling = UART_OVERSAMPLING_16;
+    
     if(HAL_UART_Init(&huart3) != HAL_OK)
     {
         _Error_Handler(__FILE__, __LINE__);
@@ -161,6 +162,7 @@ void ReInitUart3(uint32_t baudrate, uint32_t stopbits, uint32_t parity)
         baudrate = 9600;
         printf("Rs485 baudrate: 9600\r\n");
     }
+    
     if(pRs485Inf->stopBit== RS485_STOP_BITS_NONE)
     {
         stopbits = UART_STOPBITS_1;

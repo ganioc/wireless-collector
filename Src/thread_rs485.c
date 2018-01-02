@@ -198,12 +198,10 @@ static void switchToWorking()
 
     // set RS485 new baudrate
 
-
-
     if(pSysInfo->role == ROLE_MASTER)
     {
         mRs485Thread.state = STATE_WORKING_MASTER;
-        mRxState = MASTER_STATE_ZERO;
+        mRxState = RS485_STATE_RX_NONE;
         printf("Role master\r\n");
 
         // trigure loraThread
@@ -218,7 +216,7 @@ static void switchToWorking()
 
 
         mRs485Thread.state = STATE_WORKING_SLAVE;
-        mRxState = SLAVE_STATE_ZERO;
+        mRxState = RS485_STATE_RX_NONE;
         printf("Role slave\r\n");
 
         // trigure lorathread
@@ -268,11 +266,13 @@ static void TaskHandlerWorking(osEvent ret)
 
         if(mRs485Thread.state == STATE_WORKING_MASTER)  // it is a master
         {
-            addr16 = 0x00;
-            addr16 |= RX_BUF[0]; // get the address 1byte from the modbus
+            // addr16 = 0x00;
+            printf("Master: %d\r\n", RX_BUF[0]);
+            addr16 = RX_BUF[0]; // get the address 1byte from the modbus
         }
         else   // it is a slave
         {
+            printf("Slave:%d \r\n", addr16LastTime);
             addr16 = addr16LastTime; // get the address from the loraThread
         }
 
@@ -283,6 +283,7 @@ static void TaskHandlerWorking(osEvent ret)
         }
         else
         {
+            printf("Print out addr:%x\r\n", addr16);
             SendOutLoraData(addr16, RX_BUF, indexRx);
         }
 
