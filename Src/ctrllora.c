@@ -5,8 +5,8 @@
 #include "frame.h"
 #include "cmsis_os.h"
 
-uint8_t buf[256];
-uint8_t headerBuf[64];
+uint8_t buf[512];
+uint8_t headerBuf[128];
 
 void SetLoraSettingMode(){
 
@@ -45,8 +45,8 @@ void WriteLoraData(uint8_t *buf, uint8_t len){
 void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
         SysInfo_t  *pSysInfo =getSysInfoPointer();
         uint8_t channel = pSysInfo->chan;
-        uint8_t index = 0;
-        uint8_t i,j,nTemp, nTotal;
+        uint16_t index = 0;
+        uint16_t i,j,nTemp, nTotal;
 
         printf("SendOut Lora data  to addr: %d at channel %d\r\n", addr, channel);
 
@@ -66,13 +66,20 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
 
         nTotal = index;
 
+        for(i=0;i< nTotal; i++){
+            printf("%2d: %02x\r\n", i, buf[i]);
+        }
+
         headerBuf[0] = 0xff&(addr>>8);
         headerBuf[1] = 0xff &(addr);
         headerBuf[2] = channel;
 
+        printf("total length:%d\r\n", nTotal);
+
         for(i = 0; i< nTotal; i+= MAX_DATA_LENGTH){
             
             nTemp = (nTotal< i + MAX_DATA_LENGTH) ? nTotal: i+ MAX_DATA_LENGTH;
+            printf("i:%d, nTemp:%d\r\n", i, nTemp);
             
             for(j = 0; j< nTemp - i; j++){
 
@@ -80,7 +87,7 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
             }
             WriteLora( headerBuf, nTemp - i +3 );
             
-            osDelay(10);
+            osDelay(100);
         }
         
 }
