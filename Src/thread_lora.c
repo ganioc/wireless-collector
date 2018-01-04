@@ -18,11 +18,11 @@ extern  uint8_t indexRx;
 void (*handlerByteLora)(uint8_t c);
 
 uint8_t RX_BUF_LORA[BUFFER_MAX_SIZE_RS485];
-uint8_t indexRxLora = 0;
+uint16_t indexRxLora = 0;
 
 // packet storage for lora data
 uint8_t RX_BUF_FOR_RS485[BUFFER_MAX_SIZE_RS485];
-uint8_t indexRxForRs485 = 0;
+uint16_t indexRxForRs485 = 0;
 
 uint8_t mLoraState;
 

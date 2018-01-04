@@ -19,7 +19,7 @@ void (*handlerByteRs485)(uint8_t c);
 
 uint8_t RX_BUF[BUFFER_MAX_SIZE_RS485];
 static uint8_t THREAD_RX_BUF[BUFFER_MAX_SIZE_RS485];
-uint8_t indexRx = 0;
+uint16_t indexRx = 0;
 static uint8_t indexThreadRx = 0;
 
 static uint8_t mRxState= RX_STATE_ZERO;
@@ -244,7 +244,7 @@ static  void TaskHandlerConfig(osEvent ret)
 static void TaskHandlerWorking(osEvent ret)
 {
 
-    uint8_t i;
+    uint16_t i;
     uint16_t addr16;
 
     if(ret.status ==  osEventSignal&& ret.value.v == 1&& mRs485State== RS485_STATE_RX_NONE)

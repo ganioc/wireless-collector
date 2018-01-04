@@ -19,7 +19,8 @@ void WriteLoraData(uint8_t *buf, uint8_t len);
 
 void WriteLora(uint8_t *buf, uint8_t len);
 
-void SendOutLoraData(uint16_t addr,  uint8_t * buf, uint8_t len);
+void SendOutLoraData(uint16_t addr,  uint8_t * buf, uint8_t len); // maximum 
+// length is 58
 
 void SendOutRs485Data(uint8_t * buf, uint16_t  len);
 
