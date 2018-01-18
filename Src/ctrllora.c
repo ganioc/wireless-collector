@@ -25,7 +25,7 @@ void WriteLora(uint8_t *buf, uint8_t len){
     printf("writeLora len:%d\r\n", len);
 
     for(i=0; i< len; i++){
-        printf("%02d: 0x%02x\r\n", i,  buf[i]);
+        //printf("%02d: 0x%02x\r\n", i,  buf[i]);
     }
     
     UART2_Transmit(buf, len);
@@ -67,7 +67,7 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
         nTotal = index;
 
         for(i=0;i< nTotal; i++){
-            printf("%2d: %02x\r\n", i, buf[i]);
+            // printf("%2d: %02x\r\n", i, buf[i]);
         }
 
         headerBuf[0] = 0xff&(addr>>8);
@@ -87,17 +87,17 @@ void SendOutLoraData(uint16_t addr,uint8_t * inBuf, uint8_t inLen){
             }
             WriteLora( headerBuf, nTemp - i +3 );
             
-            osDelay(100);
+            osDelay(10);
         }
         
 }
 
 void SendOutRs485Data(uint8_t * buf, uint16_t len){
     uint16_t i;
-    printf("Sendout to RS485\r\n");
+    printf("Sendout to RS485: len: %d\r\n", len);
     
     for(i=0; i< len; i++){
-        printf("%02d: %02x\r\n", i, buf[i]); 
+        //printf("%02d: %02x\r\n", i, buf[i]); 
     }
 
     UART3_Transmit(buf,  len);

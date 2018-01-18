@@ -16,9 +16,11 @@ void parseConfigSet(char* str, uint8_t len)
 {
     char strObj[5];
     char strContent[16];
+    char strBuf[26];
     uint8_t i, j=0;
     SysInfo_t *pSysInfo ;
     Rs485Info_t  * pRs485Info;
+    AdvanceInfo_t *pAdvanceInfo;
     uint16_t addr16, channel;
 
     for(i=0; i< 4; i++)
@@ -37,6 +39,7 @@ void parseConfigSet(char* str, uint8_t len)
     {
         printf("Quit config\r\n");
         osSignalSet(mRs485Thread.idThread, 0x02);
+
 
     }
     else if(strcmp(strObj, "ADDR") == 0)
@@ -118,6 +121,25 @@ void parseConfigSet(char* str, uint8_t len)
                    pRs485Info->parity);
         }
     }
+    else if(strcmp(strObj, "DELY") == 0)
+    {
+        printf("RS485 packet delay config\r\n");
+        if(strlen(strContent) > 3 ||strlen(strContent) == 0)
+        {
+            printf("wrong format of packet delay: %d\r\n", strlen(strContent));
+        }
+        else
+        {
+            // save delay
+            pAdvanceInfo= getAdvanceInfoPointer();
+            channel = atoi((char*)strContent);
+            pAdvanceInfo->packetDelayH= (channel >> 8)& 0xff;
+            pAdvanceInfo->packetDelayL = channel & 0xff;
+
+            printf("Set packet delay to:0x%x  0x%x\r\n",
+                   pAdvanceInfo->packetDelayH, pAdvanceInfo->packetDelayL);
+        }
+    }
     else if(strcmp(strObj, "STOP") == 0)
     {
         printf("RS485 portl stopbits config\r\n");
@@ -141,6 +163,7 @@ void parseConfigSet(char* str, uint8_t len)
         printf("save to e2prom config\r\n");
         saveSysInfoPointer();
         saveRs485InfoPointer();
+        saveAdvanceInfoPointer();
     }
     else if(strcmp(strObj, "MAST") == 0)
     {
@@ -155,12 +178,18 @@ void parseConfigSet(char* str, uint8_t len)
         pSysInfo = getSysInfoPointer();
         pSysInfo->role = ROLE_SLAVE;
     }
-
     else
     {
 
         printf("Unrecognized configset cmd\r\n%s\r\n", strObj);
+        sprintf(strBuf, "%s\r\n", "NOK");
+        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+        return;
     }
+
+    sprintf(strBuf, "%s\r\n", "OK");
+    UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+    
 }
 void parseConfigRead(char* str, uint8_t len)
 {
@@ -169,6 +198,7 @@ void parseConfigRead(char* str, uint8_t len)
     uint8_t i;
     SysInfo_t *pSysInfo ;
     Rs485Info_t *pRs485Info;
+    AdvanceInfo_t *pAdvanceInfo;
 
     for(i=0; i< 4; i++)
     {
@@ -191,6 +221,8 @@ void parseConfigRead(char* str, uint8_t len)
 
         printf("read sys info\r\n");
         pSysInfo = getSysInfoPointer();
+        pAdvanceInfo = getAdvanceInfoPointer();
+        
 
         sprintf(strBuf, "version%d:%s\r\n", strlen(pSysInfo->version), pSysInfo->version);
         UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
@@ -212,6 +244,12 @@ void parseConfigRead(char* str, uint8_t len)
                 pRs485Info->baudRate,
                 pRs485Info->parity,
                 pRs485Info->stopBit);
+        UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+
+        pAdvanceInfo = getAdvanceInfoPointer();
+        sprintf(strBuf, "packet Delay H:0x%x  L: 0x%x\r\n", 
+        pAdvanceInfo->packetDelayH, pAdvanceInfo->packetDelayL);
+
         UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
 
     }

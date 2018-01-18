@@ -356,12 +356,12 @@ static void TaskLoop(void const * argument)
         }
         else if(mRs485Thread.state == STATE_WORKING_MASTER)
         {
-            ret = osSignalWait(0x3, 15);
+            ret = osSignalWait(0x3, getPacketDelay());
             TaskHandlerWorking(ret);
         }
         else if(mRs485Thread.state == STATE_WORKING_SLAVE)
         {
-            ret = osSignalWait(0x3, 15);
+            ret = osSignalWait(0x3, getPacketDelay());
             TaskHandlerWorking(ret);
 
         }

@@ -7,6 +7,7 @@ extern I2C_HandleTypeDef hi2c1;
 uint8_t   mbrInfo[MBRINFO_SIZE];
 uint8_t   sysInfo[SYSINFO_SIZE];
 uint8_t   rs485Info[RS485INFO_SIZE];
+uint8_t   advanceInfo[ADVANCEINFO_SIZE];
 
 
 void E2PROM_Read(uint8_t section, uint8_t page, uint8_t * data, uint8_t len)
@@ -66,6 +67,13 @@ void Set_Rs485Info(uint8_t * data, uint8_t len)
 {
     E2PROM_Write(SECTION_RS485INFO, PAGE_RS485INFO,  data, len);
 }
+void Get_AdvanceInfo(uint8_t * data, uint8_t len){
+    E2PROM_Read(SECTION_ADVANCEINFO, PAGE_ADVANCEINFO,  data, len);
+}
+void Set_AdvanceInfo(uint8_t * data, uint8_t len){
+    E2PROM_Write(SECTION_ADVANCEINFO, PAGE_ADVANCEINFO,  data, len);
+}
+
 
 void ResetToDefaultE2Prom()
 {
@@ -73,12 +81,14 @@ void ResetToDefaultE2Prom()
     MBRInfo_t     *pMBRInfo;
     SysInfo_t      *pSysInfo;
     Rs485Info_t  *pRs485Info;
+    AdvanceInfo_t *pAdvanceInfo;
     char strTemp[32];
     uint8_t i;
     
     pMBRInfo = (MBRInfo_t *)mbrInfo;
     pSysInfo = (SysInfo_t *)sysInfo;
     pRs485Info = (Rs485Info_t  *)rs485Info;
+    pAdvanceInfo = (AdvanceInfo_t*)advanceInfo;
 
     printf("E2PROM not initiated, set to default value\n");
     pMBRInfo->mark1 = 'r';
@@ -122,18 +132,22 @@ void ResetToDefaultE2Prom()
     pRs485Info->parity = RS485_PARITY_NONE;
     pRs485Info->stopBit = RS485_STOP_BITS_1;
 
+    pAdvanceInfo->packetDelayH = 0;
+    pAdvanceInfo->packetDelayL = 15;
+
     Set_MBR(mbrInfo, MBRINFO_SIZE);
     Set_SysInfo(sysInfo, SYSINFO_SIZE);
     Set_Rs485Info(rs485Info, RS485INFO_SIZE);
-
+    Set_AdvanceInfo(advanceInfo, ADVANCEINFO_SIZE);
 
 }
 void E2PROM_Init(void)
 {
 
-    MBRInfo_t    *pMBRInfo;
-    SysInfo_t     *pSysInfo;
-    Rs485Info_t  *pRs485Info;
+    MBRInfo_t       *pMBRInfo;
+    SysInfo_t        *pSysInfo;
+    Rs485Info_t     *pRs485Info;
+    AdvanceInfo_t  *pAdvanceInfo;
     
     uint16_t i;
 
@@ -143,10 +157,12 @@ void E2PROM_Init(void)
     Get_MBR(mbrInfo, MBRINFO_SIZE);
     Get_SysInfo(sysInfo, SYSINFO_SIZE);
     Get_Rs485Info(rs485Info, RS485INFO_SIZE);
+    Get_AdvanceInfo(advanceInfo, ADVANCEINFO_SIZE);
 
     pMBRInfo = (MBRInfo_t *)mbrInfo;
     pSysInfo = (SysInfo_t *)sysInfo;
     pRs485Info = (Rs485Info_t *)rs485Info;
+    pAdvanceInfo = (AdvanceInfo_t*)advanceInfo;
 
     // OK  , read out the data
     if(pMBRInfo->mark1 == 'r'
@@ -166,10 +182,12 @@ void E2PROM_Init(void)
         Get_MBR(mbrInfo, MBRINFO_SIZE);
         Get_SysInfo(sysInfo, SYSINFO_SIZE);
         Get_Rs485Info(rs485Info, RS485INFO_SIZE);
+        Get_AdvanceInfo(advanceInfo, ADVANCEINFO_SIZE);
 
         pMBRInfo = (MBRInfo_t *)mbrInfo;
         pSysInfo = (SysInfo_t *)sysInfo;
         pRs485Info = (Rs485Info_t *)rs485Info;
+        pAdvanceInfo = (AdvanceInfo_t *)advanceInfo;
     }
 
     // Print out the parameters
@@ -189,6 +207,9 @@ void E2PROM_Init(void)
     printf("baudrate:%d\r\n", pRs485Info->baudRate);
     printf("parity:%d\r\n", pRs485Info->parity);
     printf("stopbits:%d\r\n", pRs485Info->stopBit);
+
+    printf("packetDelay H:%d\r\n", pAdvanceInfo->packetDelayH);
+    printf("packetDelay L:%d\r\n", pAdvanceInfo->packetDelayL);
 
 }
 
@@ -218,7 +239,15 @@ void saveRs485InfoPointer()
 {
     Set_Rs485Info(rs485Info,RS485INFO_SIZE);
 }
+AdvanceInfo_t *getAdvanceInfoPointer(){
+    AdvanceInfo_t *pAdvanceInfo;
+    pAdvanceInfo = (AdvanceInfo_t *)advanceInfo;
 
+    return pAdvanceInfo;
+}
+void saveAdvanceInfoPointer(){
+    Set_AdvanceInfo(advanceInfo, ADVANCEINFO_SIZE);
+}
 uint8_t getSysInfoChannel()
 {
     SysInfo_t  *pSysInfo= (SysInfo_t *)sysInfo;
@@ -229,5 +258,10 @@ uint8_t getSysInfoRole()
     SysInfo_t  *pSysInfo= (SysInfo_t *)sysInfo;
     return pSysInfo->role;
 }
-
+uint16_t getPacketDelay(){
+    uint16_t delay=0;
+    AdvanceInfo_t *pAdvanceInfo = (AdvanceInfo_t *)advanceInfo;
+    delay = (pAdvanceInfo->packetDelayH)<<8 |(pAdvanceInfo->packetDelayL);
+    return delay;
+}
 
