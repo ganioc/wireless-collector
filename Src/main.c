@@ -57,7 +57,7 @@
 
 /* USER CODE BEGIN Includes */
 #include "mye2prom.h"
-
+#include "encrypt.h"
     
 /* USER CODE END Includes */
 
@@ -129,7 +129,18 @@ int main(void)
   
   MX_USB_PCD_Init();
 
+  Encrypt_Init();
+
   /* USER CODE BEGIN 2 */
+
+  printf("\nTest cryption ... \n");
+  
+
+  testEncrypt2();
+
+
+
+  printf("\nTest cryption end ... \n");
   
   
   /* USER CODE END 2 */

@@ -135,6 +135,9 @@ void ResetToDefaultE2Prom()
     pAdvanceInfo->packetDelayH = 0;
     pAdvanceInfo->packetDelayL = 15;
 
+    pAdvanceInfo->bEncrypt = 1; // enable encryption
+    sprintf((char*)pAdvanceInfo->secretKey, "%s", SECRET_KEY);
+
     Set_MBR(mbrInfo, MBRINFO_SIZE);
     Set_SysInfo(sysInfo, SYSINFO_SIZE);
     Set_Rs485Info(rs485Info, RS485INFO_SIZE);
@@ -210,6 +213,12 @@ void E2PROM_Init(void)
 
     printf("packetDelay H:%d\r\n", pAdvanceInfo->packetDelayH);
     printf("packetDelay L:%d\r\n", pAdvanceInfo->packetDelayL);
+    printf("bEncrypt:%d\r\n", pAdvanceInfo->bEncrypt);
+
+    for(i=0; i< MAX_SECRET_KEY_LEN; i++)
+    {
+        printf("0x%2x\n",pAdvanceInfo->secretKey[i]);
+    }
 
 }
 
@@ -264,4 +273,21 @@ uint16_t getPacketDelay(){
     delay = (pAdvanceInfo->packetDelayH)<<8 |(pAdvanceInfo->packetDelayL);
     return delay;
 }
+
+uint8_t isUseEncrypt(){
+    AdvanceInfo_t *pAdvanceInfo = (AdvanceInfo_t *)advanceInfo;
+
+    return pAdvanceInfo->bEncrypt;
+
+}
+
+void getSecretKey(uint8_t in[]){
+    uint8_t i = 0;
+     AdvanceInfo_t *pAdvanceInfo = (AdvanceInfo_t *)advanceInfo;
+    for(i=0; i< MAX_SECRET_KEY_LEN; i++){
+        in[i] = pAdvanceInfo->secretKey[i];
+
+    }
+}
+
 

@@ -35,6 +35,8 @@ there are 32 sections
 #define E2PROM_TIMEOUT          5*E2PROM_WRITE_WAIT
 #define E2PROM_SECTION_SIZE   32
 
+#define MAX_SECRET_KEY_LEN   16
+#define SECRET_KEY                    "0123456789ruffos"
 
 typedef struct MBRInfo
 {
@@ -69,6 +71,9 @@ typedef struct Rs485Info{
 typedef struct AdvanceInfo{
     uint8_t packetDelayH;
     uint8_t packetDelayL;
+    uint8_t bEncrypt;
+    uint8_t secretKey[MAX_SECRET_KEY_LEN+1];
+        
 }AdvanceInfo_t;
 
 #define MBRINFO_SIZE                    sizeof(MBRInfo_t)
@@ -92,4 +97,8 @@ uint8_t getSysInfoRole();
 
 void ResetToDefaultE2Prom();
 uint16_t getPacketDelay();
+
+uint8_t isUseEncrypt();
+void getSecretKey(uint8_t in[]);
+
 #endif

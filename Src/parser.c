@@ -17,7 +17,7 @@ void parseConfigSet(char* str, uint8_t len)
     char strObj[5];
     char strContent[16];
     char strBuf[26];
-    uint8_t i, j=0;
+    uint8_t i, j=0,length;
     SysInfo_t *pSysInfo ;
     Rs485Info_t  * pRs485Info;
     AdvanceInfo_t *pAdvanceInfo;
@@ -178,6 +178,49 @@ void parseConfigSet(char* str, uint8_t len)
         pSysInfo = getSysInfoPointer();
         pSysInfo->role = ROLE_SLAVE;
     }
+    else if(strcmp(strObj, "CRYP") == 0)
+    {
+        printf("set encrypt to:\r\n");
+        if(strlen(strContent) != 1)
+        {
+            printf("wrong format of CRYP: %d\r\n", strlen(strContent));
+        }
+        else
+        {
+            pAdvanceInfo= getAdvanceInfoPointer();  
+            j = atoi((char*)strContent);
+            pAdvanceInfo->bEncrypt = j;
+            printf("encrypt:%d\r\n", j);
+        }
+        
+    }
+    else if(strcmp(strObj, "KEYS") == 0)
+    {
+        printf("set KEYS to:\r\n");
+        pAdvanceInfo= getAdvanceInfoPointer();  
+        length = strlen(strContent);
+        
+        if(length < 1)
+        {
+            printf("wrong format of SECRET KEYS: %d\r\n", length);
+        }
+        else if(length >= MAX_SECRET_KEY_LEN)
+        {
+            for(i=0 ;i< MAX_SECRET_KEY_LEN; i++){
+                pAdvanceInfo->secretKey[i] = strContent[i];
+                printf("0x%2x\r\n", pAdvanceInfo->secretKey[i]);
+            }
+        }else{
+            for(i=0;i < length; i++){
+                pAdvanceInfo->secretKey[i] = strContent[i];
+                printf("0x%2x\r\n", pAdvanceInfo->secretKey[i]);
+            }
+            for(;i< MAX_SECRET_KEY_LEN; i++){
+                pAdvanceInfo->secretKey[i] = 'R';
+                printf("0x%2x\r\n", pAdvanceInfo->secretKey[i]);
+            }
+        }
+    }
     else
     {
 
@@ -252,6 +295,12 @@ void parseConfigRead(char* str, uint8_t len)
 
         UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
 
+        for(i=0 ;i< MAX_SECRET_KEY_LEN; i++){
+                printf("0x%2x\r\n", pAdvanceInfo->secretKey[i]);
+                sprintf(strBuf, "0x%2x\r\n", pAdvanceInfo->secretKey[i]);
+                UART3_Transmit((uint8_t*)strBuf, strlen(strBuf));
+        }
+
     }
     else
     {
@@ -272,7 +321,7 @@ void parseConfig(char* str, uint8_t len)
     }
     strType[i] = '\0';
 
-    for(i; i<len; i++)
+    for(i=i; i<len; i++)
     {
         strObj[j++] = str[i];
     }

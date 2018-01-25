@@ -1,0 +1,177 @@
+#include "encrypt.h"
+#include <stdio.h>
+#include "stm32f1xx_hal.h"
+#include "mye2prom.h"
+#include "ecb.h"
+
+
+static uint8_t SECRETS[MAX_SECRET_KEY_LEN];
+
+void Encrypt_Init(){
+    int i =0;
+    getSecretKey(SECRETS);
+
+    for(i=0; i< MAX_SECRET_KEY_LEN; i++){
+        printf("0x%2x\r\n", SECRETS[i]);
+    }
+}
+
+// return buf size
+int encrypt(char buf[], int len){
+    int lenOut = 0, lenPadding;
+    int i, numPadding, remain, index=0;
+    uint8_t inTemp[MAX_SECRET_KEY_LEN]; // 16
+    uint8_t outTemp[MAX_SECRET_KEY_LEN];
+    uint8_t tempBuf[300] = {0};
+
+    remain = len%MAX_SECRET_KEY_LEN;
+
+    if(remain <= 13){
+        lenPadding = MAX_SECRET_KEY_LEN - remain;
+    }else{
+        lenPadding = MAX_SECRET_KEY_LEN*2 - remain;
+    }
+
+    lenOut = lenPadding + len;
+    printf("len:%d  lenPadding:%d  lenOut:%d \r\n",len, lenPadding, lenOut);
+        
+    // create padding
+    tempBuf[index++] = 'R';
+    tempBuf[index++] = 'U';
+    numPadding = lenPadding - 3;
+    tempBuf[index++] = numPadding;
+
+    printf("numPadding:%d \r\n",numPadding);
+
+    for(i=0; i< numPadding; i++){
+        tempBuf[index++] = 0x0;
+    }
+    
+    // appending len
+    for(i=0;i <len; i++){
+        tempBuf[index++] = buf[i];
+    }
+
+    for(i = 0; i< lenOut/MAX_SECRET_KEY_LEN; i++){
+        AES128_ECB_encrypt(tempBuf + i*MAX_SECRET_KEY_LEN, SECRETS , (uint8_t*)(buf+ i*MAX_SECRET_KEY_LEN));
+    }
+    
+    return lenOut;
+}
+
+// return buf size, 
+int decrypt(char buf[], int len){
+    int lenOut = 0, i;
+    int remain = len % MAX_SECRET_KEY_LEN;
+     uint8_t tempBuf[300] = {0};
+
+    if(remain != 0){
+        printf("Wrong len of packet to be decrypted\r\n");
+        return -1;
+    }
+
+    printf("decrypt len:%d\r\n", len);
+    for(i=0; i< len; i++){
+        printf("0x%02x ", buf[i]);
+    }
+    printf("\r\n");
+
+    for(i = 0; i< len/MAX_SECRET_KEY_LEN; i++){
+        AES128_ECB_decrypt((uint8_t*)(buf + i*MAX_SECRET_KEY_LEN), SECRETS , (uint8_t*)(tempBuf+ i*MAX_SECRET_KEY_LEN));
+    }
+
+    printf("decrypt out:\r\n");
+    for(i=0; i< len; i++){
+        printf("0x%02x ", tempBuf[i]);
+    }
+    printf("\r\n");
+
+    if(tempBuf[0]!= 'R' || tempBuf[1]!= 'U'){
+        printf("Unmatched RU header\r\n");
+        
+        return -1;
+    }
+
+    lenOut = len -tempBuf[2] - 3;
+
+    for(i=0; i< lenOut; i++){
+        buf[i] = tempBuf[tempBuf[2] + 3];
+
+    }
+    
+    return lenOut;
+}
+
+void testEncrypt2(){
+
+    uint8_t inBuf[] = { 0x11, 0x22, 0x33, 0x44,0x55, 0x66, 0x77, 0x88, 0x11, 0x22, 0x33, 0x44,0x55, 0x66, 0x77, 0x88, 
+    };
+    uint8_t in[sizeof(inBuf) + 20] = {0};
+    int len= sizeof(inBuf) ;
+    int i;
+
+    printf("inlen: %d\r\n", len);
+        
+    for(i=0; i< len; i++){
+        in[i] = inBuf[i];
+         printf("0x%02x ", in[i]);
+    }
+    printf("\r\n");
+
+    len = encrypt((char *) in, len);
+
+    printf("out len:%d\r\n", len);
+
+    for(i=0; i< len; i++){
+        printf("0x%02x ", in[i]);
+
+    }
+    printf("\r\n");
+
+    len = decrypt((char*)in, len);
+
+    if(len != -1){
+    for(i=0; i< len; i++){
+        printf("0x%02x ", in[i]);
+
+    }
+    printf("\r\n");
+
+    }
+    
+    
+}
+
+void testEncrypt(){
+    uint8_t inBuf[] = { 0x11, 0x22, 0x33, 0x44,0x55, 0x66, 0x77, 0x88, 0x11, 0x22, 0x33, 0x44,0x55, 0x66, 0x77, 0x88, 
+    };
+    uint8_t outBuf[16]= {0};
+    int i;
+
+    printf("SECRETS %d\r\n", 16);
+    for(i =0 ; i< 16; i++){
+        printf("0x%02x ", SECRETS[i]);
+    }
+    printf("\r\n");
+
+    printf("Input %d bytes data\r\n", sizeof(inBuf));
+    for(i =0 ; i< 16; i++){
+        printf("0x%02x ", inBuf[i]);
+    }
+    printf("\r\n");
+    AES128_ECB_encrypt(inBuf, SECRETS , outBuf);
+
+    printf("Output bytes data\r\n");
+    for(i =0 ; i< 16; i++){
+        printf("0x%02x ", outBuf[i]);
+    }
+    printf("\r\n");
+
+    printf("Decrypt out\r\n");
+    AES128_ECB_decrypt(outBuf, SECRETS, inBuf);
+    for(i =0 ; i< 16; i++){
+        printf("0x%02x ", inBuf[i]);
+    }
+    
+
+}
